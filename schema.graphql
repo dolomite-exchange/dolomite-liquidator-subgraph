@@ -1,0 +1,40 @@
+type User @entity {
+  id: ID! # the user's address
+}
+
+type Transaction @entity {
+  id: ID! # txn hash
+  blockNumber: BigInt!
+  timestamp: BigInt!
+}
+
+type MarginAccount @entity {
+  id: ID! # Defined as "userAddress-accountNumber"
+  user: User!
+  accountNumber: BigInt!
+  lastUpdatedTimestamp: BigInt! # Timestamp at which any token value was last updated
+  lastUpdatedBlockNumber: BigInt!
+  tokenValues: [MarginAccountTokenValue!]! @derivedFrom(field: "marginAccount")
+}
+
+type MarginAccountTokenValue @entity {
+  id: ID! # Defined as "user-accountNumber-marketId"
+  marginAccount: MarginAccount!
+  marketId: BigInt!
+  token: Token!
+  valuePar: BigDecimal! # Par value of the user's held token. Can be negative, meaning it's borrowed funds.
+  expirationTimestamp: BigInt
+}
+
+type Token @entity {
+  # token address
+  id: ID!
+
+  # mirrored from the smart contract
+  symbol: String!
+  name: String!
+  decimals: BigInt!
+
+  # Taken from dYdX
+  marketId: BigInt!
+}
