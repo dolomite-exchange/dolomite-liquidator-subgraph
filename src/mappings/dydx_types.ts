@@ -1,6 +1,6 @@
 import { Address, BigDecimal, BigInt } from '@graphprotocol/graph-ts'
 import { BI_18, convertTokenToDecimal, ZERO_BI } from './helpers'
-import { EthereumTuple, EthereumValue } from '@graphprotocol/graph-ts'
+import { ethereum } from '@graphprotocol/graph-ts'
 
 export class BalanceUpdate {
 
@@ -30,9 +30,9 @@ export class BalanceUpdate {
 
 export class ValueStruct {
 
-  private tuple: EthereumTuple
+  private tuple: ethereum.Tuple
 
-  constructor(tuple: EthereumTuple) {
+  constructor(tuple: ethereum.Tuple) {
     this.tuple = tuple
   }
 
@@ -53,16 +53,9 @@ export class ValueStruct {
   }
 
   static fromFields(sign: boolean, value: BigInt): ValueStruct {
-    return new ValueStruct(new EthereumTuple(
-      EthereumValue.fromBoolean(sign),
-      EthereumValue.fromUnsignedBigInt(value)
+    return new ValueStruct(new ethereum.Tuple(
+      ethereum.Value.fromBoolean(sign),
+      ethereum.Value.fromUnsignedBigInt(value)
     ))
   }
-}
-
-export enum MarginPositionStatus {
-  Open = 'OPEN',
-  Closed = 'CLOSED',
-  Expired = 'EXPIRED',
-  Liquidated = 'LIQUIDATED',
 }

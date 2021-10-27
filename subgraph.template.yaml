@@ -5,59 +5,41 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum/contract
-    name: UniswapV2Factory
-    network: mainnet
-    source:
-#      address: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f' # Mainnet
-      address: '0xFC628dd79137395F3C9744e33b1c5DE554D94882' # Local Node
-      abi: Factory
-      startBlock: 10000834
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.3
-      language: wasm/assemblyscript
-      file: ./src/mappings/factory.ts
-      entities:
-        - Pair
-        - Token
-      abis:
-        - name: Factory
-          file: ./abis/factory.json
-        - name: ERC20
-          file: ./abis/ERC20.json
-        - name: ERC20SymbolBytes
-          file: ./abis/ERC20SymbolBytes.json
-        - name: ERC20NameBytes
-          file: ./abis/ERC20NameBytes.json
-      eventHandlers:
-        - event: PairCreated(indexed address,indexed address,address,uint256)
-          handler: handleNewPair
-  - kind: ethereum/contract
     name: MarginTrade
-    network: mainnet
+    network: {{network}}
     source:
-#      address: '' # Mainnet
-      address: '0xb09bCc172050fBd4562da8b229Cf3E45Dc3045A6' # Local Node
+      address: '{{dyDxAddress}}'
       abi: DyDx
-      startBlock: 0
+      startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.3
+      apiVersion: 0.0.5
       language: wasm/assemblyscript
       file: ./src/mappings/dydx.ts
       entities:
-        - Pair
         - Token
       abis:
         - name: DyDx
-          file: ./abis/DyDx.json
+          file: ./abis/dydx.json
         - name: ERC20
-          file: ./abis/ERC20.json
+          file: ./abis/erc20.json
         - name: ERC20SymbolBytes
-          file: ./abis/ERC20SymbolBytes.json
+          file: ./abis/erc20-symbol-bytes.json
         - name: ERC20NameBytes
-          file: ./abis/ERC20NameBytes.json
+          file: ./abis/erc20-name-bytes.json
       eventHandlers:
+        - event: LogAddMarket(uint256,address)
+          handler: handleMarketAdded
+        - event: LogSetEarningsRate((uint256))
+          handler: handleEarningsRateUpdate
+        - event: LogSetMarginPremium(uint256,(uint256))
+          handler: handleSetMarginPremium
+        - event: LogSetSpreadPremium(uint256,(uint256))
+          handler: handleSetLiquidationSpreadPremium
+        - event: LogSetIsClosing(uint256,bool)
+          handler: handleSetIsMarketClosing
+        - event: LogOperation(address)
+          handler: handleOperation
         - event: LogIndexUpdate(indexed uint256,(uint96,uint96,uint32))
           handler: handleIndexUpdate
         - event: LogDeposit(indexed address,uint256,uint256,((bool,uint256),(bool,uint128)),address)
@@ -76,35 +58,29 @@ dataSources:
           handler: handleLiquidate
         - event: LogVaporize(indexed address,uint256,indexed address,uint256,uint256,uint256,((bool,uint256),(bool,uint128)),((bool,uint256),(bool,uint128)),((bool,uint256),(bool,uint128)))
           handler: handleVaporize
-        - event: ExpirySet(address,uint256,uint256,uint32)
-          handler: handleSetExpiry
-templates:
   - kind: ethereum/contract
-    name: Pair
-    network: mainnet
+    name: MarginTradeExpiryV2
+    network: {{network}}
     source:
-      abi: Pair
+      address: '{{expiryAddress}}'
+      abi: DyDx
+      startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.3
+      apiVersion: 0.0.5
       language: wasm/assemblyscript
-      file: ./src/mappings/core.ts
+      file: ./src/mappings/dydx.ts
       entities:
-        - Pair
         - Token
       abis:
-        - name: Pair
-          file: ./abis/pair.json
-        - name: Factory
-          file: ./abis/factory.json
+        - name: DyDx
+          file: ./abis/dydx.json
+        - name: ERC20
+          file: ./abis/erc20.json
+        - name: ERC20SymbolBytes
+          file: ./abis/erc20-symbol-bytes.json
+        - name: ERC20NameBytes
+          file: ./abis/erc20-name-bytes.json
       eventHandlers:
-        - event: Mint(indexed address,uint256,uint256)
-          handler: handleMint
-        - event: Burn(indexed address,uint256,uint256,indexed address)
-          handler: handleBurn
-        - event: Swap(indexed address,uint256,uint256,uint256,uint256,indexed address)
-          handler: handleSwap
-        - event: Transfer(indexed address,indexed address,uint256)
-          handler: handleERC20Transfer
-        - event: Sync(uint112,uint112)
-          handler: handleSync
+        - event: ExpirySet(address,uint256,uint256,uint32)
+          handler: handleSetExpiry

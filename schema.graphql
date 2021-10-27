@@ -1,7 +1,3 @@
-type User @entity {
-  id: ID! # the user's address
-}
-
 type Transaction @entity {
   id: ID! # txn hash
   blockNumber: BigInt!
@@ -10,11 +6,15 @@ type Transaction @entity {
 
 type MarginAccount @entity {
   id: ID! # Defined as "userAddress-accountNumber"
-  user: User!
+  user: Bytes!
   accountNumber: BigInt!
   lastUpdatedTimestamp: BigInt! # Timestamp at which any token value was last updated
   lastUpdatedBlockNumber: BigInt!
   tokenValues: [MarginAccountTokenValue!]! @derivedFrom(field: "marginAccount")
+  borrowedMarketIds: [MarginAccountTokenValue!]!
+  expirationMarketIds: [MarginAccountTokenValue!]!
+  hasBorrowedValue: Boolean!
+  hasExpiration: Boolean!
 }
 
 type MarginAccountTokenValue @entity {
@@ -24,6 +24,8 @@ type MarginAccountTokenValue @entity {
   token: Token!
   valuePar: BigDecimal! # Par value of the user's held token. Can be negative, meaning it's borrowed funds.
   expirationTimestamp: BigInt
+  lastUpdateTransaction: Transaction!
+  allUpdateTransactions: [Transaction!]!
 }
 
 type Token @entity {
