@@ -34,7 +34,6 @@ function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: 
     marginAccount = new MarginAccount(id)
     marginAccount.user = owner
     marginAccount.accountNumber = accountNumber
-    marginAccount.tokenValues = []
   }
 
   marginAccount.lastUpdatedBlockNumber = block.number
