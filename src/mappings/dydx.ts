@@ -1,31 +1,38 @@
 /* eslint-disable prefer-const */
 import {
   DyDx,
-  LogAddMarket as AddMarketEvent,
   ExpirySet as ExpirySetEvent,
+  LogAddMarket as AddMarketEvent,
   LogBuy as BuyEvent,
   LogDeposit as DepositEvent,
   LogLiquidate as LiquidationEvent,
   LogSell as SellEvent,
+  LogSetEarningsRate as EarningsRateUpdateEvent,
+  LogSetIsClosing as IsClosingUpdateEvent,
+  LogSetLiquidationSpread as LiquidationSpreadUpdateEvent,
+  LogSetMarginPremium as MarginPremiumUpdateEvent,
+  LogSetMarginRatio as MarginRatioUpdateEvent,
+  LogSetMinBorrowedValue as MinBorrowedValueUpdateEvent,
+  LogSetSpreadPremium as MarketSpreadPremiumUpdateEvent,
   LogTrade as TradeEvent,
   LogTransfer as TransferEvent,
   LogVaporize as VaporizationEvent,
   LogWithdraw as WithdrawEvent
 } from '../types/MarginTrade/DyDx'
+import { MarginAccount, MarginAccountTokenValue, MarketRiskInfo, Token, Transaction } from '../types/schema'
 import {
-  MarginAccount,
-  MarginAccountTokenValue,
-  Token, Transaction
-} from '../types/schema'
-import {
+  BD_ONE_ETH,
   fetchTokenDecimals,
-  fetchTokenName, fetchTokenSymbol,
+  fetchTokenName,
+  fetchTokenSymbol,
+  getOrCreateSoloMarginForDyDxCall,
+  getOrCreateTransaction,
+  ONE_BD,
   SOLO_MARGIN_ADDRESS,
   ZERO_BD
 } from './helpers'
-import { getOrCreateTransaction } from './helpers'
 import { BalanceUpdate } from './dydx_types'
-import { Address, BigInt, ethereum, log } from '@graphprotocol/graph-ts'
+import { Address, BigDecimal, BigInt, ethereum, log } from '@graphprotocol/graph-ts'
 
 function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: ethereum.Block): MarginAccount {
   const id = `${owner.toHexString()}-${accountNumber.toString()}`
@@ -127,6 +134,114 @@ export function handleMarketAdded(event: AddMarketEvent): void {
     token.decimals = decimals
     token.save()
   }
+}
+
+export function handleSetIsMarketClosing(event: IsClosingUpdateEvent): void {
+  log.info(
+    'Handling set_market_closing for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
+  let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
+  if (marketInfo === null) {
+    marketInfo = new MarketRiskInfo(event.params.marketId.toString())
+    marketInfo.token = dydxProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
+    marketInfo.marginPremium = BigDecimal.fromString('0')
+    marketInfo.liquidationRewardPremium = BigDecimal.fromString('0')
+    marketInfo.isBorrowingDisabled = false
+  }
+  marketInfo.isBorrowingDisabled = event.params.isClosing
+  marketInfo.save()
+}
+
+export function handleEarningsRateUpdate(event: EarningsRateUpdateEvent): void {
+  log.info(
+    'Handling earnings rate change for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let earningsRateBD = new BigDecimal(event.params.earningsRate.value)
+  let soloMargin = getOrCreateSoloMarginForDyDxCall()
+  soloMargin.earningsRate = earningsRateBD.div(BD_ONE_ETH) // it's a ratio where ONE_ETH is 100%
+  soloMargin.save()
+}
+
+export function handleSetLiquidationReward(event: LiquidationSpreadUpdateEvent): void {
+  log.info(
+    'Handling liquidation ratio change for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let liquidationPremiumBD = new BigDecimal(event.params.liquidationSpread.value)
+
+  let soloMargin = getOrCreateSoloMarginForDyDxCall()
+  soloMargin.liquidationReward = liquidationPremiumBD.div(BD_ONE_ETH).plus(ONE_BD)
+  soloMargin.save()
+}
+
+export function handleSetLiquidationRatio(event: MarginRatioUpdateEvent): void {
+  log.info(
+    'Handling liquidation ratio change for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let liquidationRatioBD = new BigDecimal(event.params.marginRatio.value)
+
+  let soloMargin = getOrCreateSoloMarginForDyDxCall()
+  soloMargin.liquidationRatio = liquidationRatioBD.div(BD_ONE_ETH).plus(ONE_BD)
+  soloMargin.save()
+}
+
+export function handleSetMinBorrowedValue(event: MinBorrowedValueUpdateEvent): void {
+  log.info(
+    'Handling min borrowed value change for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let minBorrowedValueBD = new BigDecimal(event.params.minBorrowedValue.value)
+
+  let soloMargin = getOrCreateSoloMarginForDyDxCall()
+  soloMargin.minBorrowedValue = minBorrowedValueBD.div(BD_ONE_ETH).div(BD_ONE_ETH)
+  soloMargin.save()
+}
+
+export function handleSetMarginPremium(event: MarginPremiumUpdateEvent): void {
+  log.info(
+    'Handling margin premium change for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
+  let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
+  if (marketInfo === null) {
+    marketInfo = new MarketRiskInfo(event.params.marketId.toString())
+    marketInfo.token = dydxProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
+    marketInfo.liquidationRewardPremium = BigDecimal.fromString('0')
+    marketInfo.isBorrowingDisabled = false
+  }
+  let marginPremium = new BigDecimal(event.params.marginPremium.value)
+  marketInfo.marginPremium = marginPremium.div(BD_ONE_ETH)
+  marketInfo.save()
+}
+
+export function handleSetLiquidationSpreadPremium(event: MarketSpreadPremiumUpdateEvent): void {
+  log.info(
+    'Handling liquidation spread premium change for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
+  let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
+  if (marketInfo === null) {
+    marketInfo = new MarketRiskInfo(event.params.marketId.toString())
+    marketInfo.token = dydxProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
+    marketInfo.marginPremium = BigDecimal.fromString('0')
+    marketInfo.isBorrowingDisabled = false
+  }
+  let spreadPremium = new BigDecimal(event.params.spreadPremium.value)
+  marketInfo.liquidationRewardPremium = spreadPremium.div(BD_ONE_ETH)
+  marketInfo.save()
 }
 
 export function handleDeposit(event: DepositEvent): void {

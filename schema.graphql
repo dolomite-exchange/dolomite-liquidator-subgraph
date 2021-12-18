@@ -4,6 +4,27 @@ type Transaction @entity {
   timestamp: BigInt!
 }
 
+type DyDxSoloMargin @entity {
+  # contract address
+  id: ID!
+
+  numberOfMarkets: Int!
+
+  # risk params
+  liquidationRatio: BigDecimal!
+  liquidationReward: BigDecimal!
+  earningsRate: BigDecimal!
+  minBorrowedValue: BigDecimal!
+}
+
+type MarketRiskInfo @entity {
+  id: ID! # Defined as marketId
+  token: Token!
+  marginPremium: BigDecimal!
+  liquidationRewardPremium: BigDecimal!
+  isBorrowingDisabled: Boolean!
+}
+
 type MarginAccount @entity {
   id: ID! # Defined as "userAddress-accountNumber"
   user: Bytes!
