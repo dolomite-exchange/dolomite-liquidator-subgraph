@@ -5,7 +5,8 @@ import { ERC20SymbolBytes } from '../types/MarginTrade/ERC20SymbolBytes'
 import { ERC20NameBytes } from '../types/MarginTrade/ERC20NameBytes'
 import { ValueStruct } from './dydx_types'
 import { TypedMap } from '@graphprotocol/graph-ts'
-import { Transaction } from '../types/schema'
+import { DyDxSoloMargin, Transaction } from '../types/schema'
+import { DyDx } from '../types/MarginTrade/DyDx'
 
 const MAINNET_NETWORK = 'mainnet'
 const MUMBAI_NETWORK = 'mumbai'
@@ -113,7 +114,7 @@ export function convertEthToDecimal(eth: BigInt): BigDecimal {
 }
 
 export function convertTokenToDecimal(tokenAmount: BigInt, exchangeDecimals: BigInt): BigDecimal {
-  if (exchangeDecimals == ZERO_BI) {
+  if (exchangeDecimals.equals(ZERO_BI)) {
     return tokenAmount.toBigDecimal()
   } else {
     return tokenAmount.toBigDecimal().div(exponentToBigDecimal(exchangeDecimals))
@@ -122,7 +123,7 @@ export function convertTokenToDecimal(tokenAmount: BigInt, exchangeDecimals: Big
 
 export function convertStructToDecimal(struct: ValueStruct, exchangeDecimals: BigInt): BigDecimal {
   let value = struct.sign ? struct.value : struct.value.neg()
-  if (exchangeDecimals == ZERO_BI) {
+  if (exchangeDecimals.equals(ZERO_BI)) {
     return value.toBigDecimal()
   } else {
     return value.toBigDecimal().div(exponentToBigDecimal(exchangeDecimals))
@@ -221,4 +222,28 @@ export function getOrCreateTransaction(event: ethereum.Event): Transaction {
   }
 
   return transaction as Transaction
+}
+
+export function getOrCreateSoloMarginForDyDxCall(): DyDxSoloMargin {
+  let soloMargin = DyDxSoloMargin.load(SOLO_MARGIN_ADDRESS)
+  if (soloMargin === null) {
+    soloMargin = new DyDxSoloMargin(SOLO_MARGIN_ADDRESS)
+
+    soloMargin.numberOfMarkets = 0
+
+    let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
+    let riskParams = dydxProtocol.getRiskParams()
+
+    let liquidationRatioBD = new BigDecimal(riskParams.marginRatio.value)
+    let liquidationRewardBD = new BigDecimal(riskParams.liquidationSpread.value)
+    let earningsRateBD = new BigDecimal(riskParams.earningsRate.value)
+    let minBorrowedValueBD = new BigDecimal(riskParams.minBorrowedValue.value)
+
+    soloMargin.liquidationRatio = liquidationRatioBD.div(BD_ONE_ETH).plus(ONE_BD)
+    soloMargin.liquidationReward = liquidationRewardBD.div(BD_ONE_ETH).plus(ONE_BD)
+    soloMargin.earningsRate = earningsRateBD.div(BD_ONE_ETH)
+    soloMargin.minBorrowedValue = minBorrowedValueBD.div(BD_ONE_ETH).div(BD_ONE_ETH)
+  }
+
+  return soloMargin as DyDxSoloMargin
 }
