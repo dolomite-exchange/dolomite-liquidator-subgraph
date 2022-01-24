@@ -15,7 +15,7 @@ dataSources:
       kind: ethereum/events
       apiVersion: 0.0.5
       language: wasm/assemblyscript
-      file: ./src/mappings/dydx.ts
+      file: ./src/mappings/dolomite-margin.ts
       entities:
         - Token
       abis:
@@ -28,8 +28,22 @@ dataSources:
         - name: ERC20NameBytes
           file: ./abis/erc20-name-bytes.json
       eventHandlers:
+        - event: LogSetEarningsRate((uint256))
+          handler: handleSetEarningsRate
+        - event: LogSetLiquidationSpread((uint256))
+          handler: handleSetLiquidationReward
+        - event: LogSetMarginRatio((uint256))
+          handler: handleSetLiquidationRatio
+        - event: LogSetMinBorrowedValue((uint256))
+          handler: handleSetMinBorrowedValue
         - event: LogAddMarket(uint256,address)
           handler: handleMarketAdded
+        - event: LogSetIsClosing(uint256,bool)
+          handler: handleSetIsMarketClosing
+        - event: LogSetMarginPremium(uint256,(uint256))
+          handler: handleSetMarginPremium
+        - event: LogSetSpreadPremium(uint256,(uint256))
+          handler: handleSetLiquidationSpreadPremium
         - event: LogDeposit(indexed address,uint256,uint256,((bool,uint256),(bool,uint128)),address)
           handler: handleDeposit
         - event: LogWithdraw(indexed address,uint256,uint256,((bool,uint256),(bool,uint128)),address)
@@ -57,7 +71,7 @@ dataSources:
       kind: ethereum/events
       apiVersion: 0.0.5
       language: wasm/assemblyscript
-      file: ./src/mappings/dydx.ts
+      file: ./src/mappings/dolomite-margin.ts
       entities:
         - Token
       abis:

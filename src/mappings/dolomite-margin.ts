@@ -1,6 +1,6 @@
 /* eslint-disable prefer-const */
 import {
-  DyDx,
+  DolomiteMargin as DolomiteMarginProtocol,
   ExpirySet as ExpirySetEvent,
   LogAddMarket as AddMarketEvent,
   LogBuy as BuyEvent,
@@ -18,20 +18,20 @@ import {
   LogTransfer as TransferEvent,
   LogVaporize as VaporizationEvent,
   LogWithdraw as WithdrawEvent
-} from '../types/MarginTrade/DyDx'
+} from '../types/MarginTrade/DolomiteMargin'
 import { MarginAccount, MarginAccountTokenValue, MarketRiskInfo, Token, Transaction } from '../types/schema'
 import {
   BD_ONE_ETH,
   fetchTokenDecimals,
   fetchTokenName,
   fetchTokenSymbol,
-  getOrCreateSoloMarginForDyDxCall,
+  getOrCreateDolomiteMarginForCall,
   getOrCreateTransaction,
   ONE_BD,
-  SOLO_MARGIN_ADDRESS,
   ZERO_BD
 } from './helpers'
-import { BalanceUpdate } from './dydx_types'
+import { DOLOMITE_MARGIN_ADDRESS } from './generated/constants'
+import { BalanceUpdate } from './dolomite-margin-types'
 import { Address, BigDecimal, BigInt, ethereum, log } from '@graphprotocol/graph-ts'
 
 function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: ethereum.Block): MarginAccount {
@@ -70,11 +70,11 @@ function getOrCreateTokenValue(
   return tokenValue
 }
 
-function handleDyDxBalanceUpdateForAccount(balanceUpdate: BalanceUpdate, event: ethereum.Event): MarginAccount {
+function handleDolomiteMarginBalanceUpdateForAccount(balanceUpdate: BalanceUpdate, event: ethereum.Event): MarginAccount {
   let marginAccount = getOrCreateMarginAccount(balanceUpdate.accountOwner, balanceUpdate.accountNumber, event.block)
 
-  let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
-  let tokenAddress = dydxProtocol.getMarketTokenAddress(balanceUpdate.market)
+  let protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
+  let tokenAddress = protocol.getMarketTokenAddress(balanceUpdate.market)
   let token = Token.load(tokenAddress.toHexString())
   let transaction = getOrCreateTransaction(event)
   let tokenValue = getOrCreateTokenValue(marginAccount, token as Token, transaction)
@@ -111,10 +111,16 @@ export function handleMarketAdded(event: AddMarketEvent): void {
     [event.params.marketId.toString(), event.params.token.toHexString(), event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
-  if (event.address.toHexString() != SOLO_MARGIN_ADDRESS) {
-    log.error('Invalid SoloMargin address, found {} and {}', [event.address.toHexString(), SOLO_MARGIN_ADDRESS])
+  if (event.address.toHexString() != DOLOMITE_MARGIN_ADDRESS) {
+    log.error('Invalid DolomiteMargin address, found {} and {}', [event.address.toHexString(), DOLOMITE_MARGIN_ADDRESS])
     throw new Error()
   }
+
+  let protocol = DolomiteMarginProtocol.bind(event.address)
+
+  let dolomiteMargin = getOrCreateDolomiteMarginForCall()
+  dolomiteMargin.numberOfMarkets = protocol.getNumMarkets().toI32()
+  dolomiteMargin.save()
 
   let tokenAddress = event.params.token
   let token = Token.load(tokenAddress.toHexString())
@@ -141,11 +147,11 @@ export function handleSetIsMarketClosing(event: IsClosingUpdateEvent): void {
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
-  let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
+  let dolomiteProtocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
   let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
   if (marketInfo === null) {
     marketInfo = new MarketRiskInfo(event.params.marketId.toString())
-    marketInfo.token = dydxProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
+    marketInfo.token = dolomiteProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
     marketInfo.marginPremium = BigDecimal.fromString('0')
     marketInfo.liquidationRewardPremium = BigDecimal.fromString('0')
     marketInfo.isBorrowingDisabled = false
@@ -154,16 +160,16 @@ export function handleSetIsMarketClosing(event: IsClosingUpdateEvent): void {
   marketInfo.save()
 }
 
-export function handleEarningsRateUpdate(event: EarningsRateUpdateEvent): void {
+export function handleSetEarningsRate(event: EarningsRateUpdateEvent): void {
   log.info(
     'Handling earnings rate change for hash and index: {}-{}',
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
   let earningsRateBD = new BigDecimal(event.params.earningsRate.value)
-  let soloMargin = getOrCreateSoloMarginForDyDxCall()
-  soloMargin.earningsRate = earningsRateBD.div(BD_ONE_ETH) // it's a ratio where ONE_ETH is 100%
-  soloMargin.save()
+  let dolomiteMargin = getOrCreateDolomiteMarginForCall()
+  dolomiteMargin.earningsRate = earningsRateBD.div(BD_ONE_ETH) // it's a ratio where ONE_ETH is 100%
+  dolomiteMargin.save()
 }
 
 export function handleSetLiquidationReward(event: LiquidationSpreadUpdateEvent): void {
@@ -174,9 +180,9 @@ export function handleSetLiquidationReward(event: LiquidationSpreadUpdateEvent):
 
   let liquidationPremiumBD = new BigDecimal(event.params.liquidationSpread.value)
 
-  let soloMargin = getOrCreateSoloMarginForDyDxCall()
-  soloMargin.liquidationReward = liquidationPremiumBD.div(BD_ONE_ETH).plus(ONE_BD)
-  soloMargin.save()
+  let dolomiteMargin = getOrCreateDolomiteMarginForCall()
+  dolomiteMargin.liquidationReward = liquidationPremiumBD.div(BD_ONE_ETH).plus(ONE_BD)
+  dolomiteMargin.save()
 }
 
 export function handleSetLiquidationRatio(event: MarginRatioUpdateEvent): void {
@@ -187,9 +193,9 @@ export function handleSetLiquidationRatio(event: MarginRatioUpdateEvent): void {
 
   let liquidationRatioBD = new BigDecimal(event.params.marginRatio.value)
 
-  let soloMargin = getOrCreateSoloMarginForDyDxCall()
-  soloMargin.liquidationRatio = liquidationRatioBD.div(BD_ONE_ETH).plus(ONE_BD)
-  soloMargin.save()
+  let dolomiteMargin = getOrCreateDolomiteMarginForCall()
+  dolomiteMargin.liquidationRatio = liquidationRatioBD.div(BD_ONE_ETH).plus(ONE_BD)
+  dolomiteMargin.save()
 }
 
 export function handleSetMinBorrowedValue(event: MinBorrowedValueUpdateEvent): void {
@@ -200,9 +206,9 @@ export function handleSetMinBorrowedValue(event: MinBorrowedValueUpdateEvent): v
 
   let minBorrowedValueBD = new BigDecimal(event.params.minBorrowedValue.value)
 
-  let soloMargin = getOrCreateSoloMarginForDyDxCall()
-  soloMargin.minBorrowedValue = minBorrowedValueBD.div(BD_ONE_ETH).div(BD_ONE_ETH)
-  soloMargin.save()
+  let dolomiteMargin = getOrCreateDolomiteMarginForCall()
+  dolomiteMargin.minBorrowedValue = minBorrowedValueBD.div(BD_ONE_ETH).div(BD_ONE_ETH)
+  dolomiteMargin.save()
 }
 
 export function handleSetMarginPremium(event: MarginPremiumUpdateEvent): void {
@@ -211,11 +217,11 @@ export function handleSetMarginPremium(event: MarginPremiumUpdateEvent): void {
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
-  let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
+  let protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
   let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
   if (marketInfo === null) {
     marketInfo = new MarketRiskInfo(event.params.marketId.toString())
-    marketInfo.token = dydxProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
+    marketInfo.token = protocol.getMarketTokenAddress(event.params.marketId).toHexString()
     marketInfo.liquidationRewardPremium = BigDecimal.fromString('0')
     marketInfo.isBorrowingDisabled = false
   }
@@ -230,11 +236,11 @@ export function handleSetLiquidationSpreadPremium(event: MarketSpreadPremiumUpda
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
-  let dydxProtocol = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
+  let protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
   let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
   if (marketInfo === null) {
     marketInfo = new MarketRiskInfo(event.params.marketId.toString())
-    marketInfo.token = dydxProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
+    marketInfo.token = protocol.getMarketTokenAddress(event.params.marketId).toHexString()
     marketInfo.marginPremium = BigDecimal.fromString('0')
     marketInfo.isBorrowingDisabled = false
   }
@@ -251,7 +257,7 @@ export function handleDeposit(event: DepositEvent): void {
     event.params.update.newPar.value,
     event.params.update.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdate, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdate, event)
 }
 
 export function handleWithdraw(event: WithdrawEvent): void {
@@ -262,7 +268,7 @@ export function handleWithdraw(event: WithdrawEvent): void {
     event.params.update.newPar.value,
     event.params.update.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdate, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdate, event)
 }
 
 export function handleTransfer(event: TransferEvent): void {
@@ -273,7 +279,7 @@ export function handleTransfer(event: TransferEvent): void {
     event.params.updateOne.newPar.value,
     event.params.updateOne.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateOne, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateOne, event)
 
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.accountTwoOwner,
@@ -282,7 +288,7 @@ export function handleTransfer(event: TransferEvent): void {
     event.params.updateTwo.newPar.value,
     event.params.updateTwo.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateTwo, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateTwo, event)
 }
 
 export function handleBuy(event: BuyEvent): void {
@@ -293,7 +299,7 @@ export function handleBuy(event: BuyEvent): void {
     event.params.makerUpdate.newPar.value,
     event.params.makerUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateOne, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateOne, event)
 
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.accountOwner,
@@ -302,7 +308,7 @@ export function handleBuy(event: BuyEvent): void {
     event.params.takerUpdate.newPar.value,
     event.params.takerUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateTwo, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateTwo, event)
 }
 
 export function handleSell(event: SellEvent): void {
@@ -313,7 +319,7 @@ export function handleSell(event: SellEvent): void {
     event.params.makerUpdate.newPar.value,
     event.params.makerUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateOne, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateOne, event)
 
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.accountOwner,
@@ -322,7 +328,7 @@ export function handleSell(event: SellEvent): void {
     event.params.takerUpdate.newPar.value,
     event.params.takerUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateTwo, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateTwo, event)
 }
 
 export function handleTrade(event: TradeEvent): void {
@@ -333,7 +339,7 @@ export function handleTrade(event: TradeEvent): void {
     event.params.makerInputUpdate.newPar.value,
     event.params.makerInputUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateOne, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateOne, event)
 
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.makerAccountOwner,
@@ -342,7 +348,7 @@ export function handleTrade(event: TradeEvent): void {
     event.params.makerOutputUpdate.newPar.value,
     event.params.makerOutputUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateTwo, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateTwo, event)
 
   const balanceUpdateThree = new BalanceUpdate(
     event.params.takerAccountOwner,
@@ -351,7 +357,7 @@ export function handleTrade(event: TradeEvent): void {
     event.params.takerInputUpdate.newPar.value,
     event.params.takerInputUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateThree, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateThree, event)
 
   const balanceUpdateFour = new BalanceUpdate(
     event.params.takerAccountOwner,
@@ -360,7 +366,7 @@ export function handleTrade(event: TradeEvent): void {
     event.params.takerOutputUpdate.newPar.value,
     event.params.takerOutputUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateFour, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateFour, event)
 }
 
 export function handleLiquidate(event: LiquidationEvent): void {
@@ -371,7 +377,7 @@ export function handleLiquidate(event: LiquidationEvent): void {
     event.params.liquidHeldUpdate.newPar.value,
     event.params.liquidHeldUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateOne, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateOne, event)
 
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.liquidAccountOwner,
@@ -380,7 +386,7 @@ export function handleLiquidate(event: LiquidationEvent): void {
     event.params.liquidOwedUpdate.newPar.value,
     event.params.liquidOwedUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateTwo, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateTwo, event)
 
   const balanceUpdateThree = new BalanceUpdate(
     event.params.solidAccountOwner,
@@ -389,7 +395,7 @@ export function handleLiquidate(event: LiquidationEvent): void {
     event.params.solidHeldUpdate.newPar.value,
     event.params.solidHeldUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateThree, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateThree, event)
 
   const balanceUpdateFour = new BalanceUpdate(
     event.params.solidAccountOwner,
@@ -398,7 +404,7 @@ export function handleLiquidate(event: LiquidationEvent): void {
     event.params.solidOwedUpdate.newPar.value,
     event.params.solidOwedUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateFour, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateFour, event)
 }
 
 export function handleVaporize(event: VaporizationEvent): void {
@@ -409,7 +415,7 @@ export function handleVaporize(event: VaporizationEvent): void {
     event.params.vaporOwedUpdate.newPar.value,
     event.params.vaporOwedUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateOne, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateOne, event)
 
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.solidAccountOwner,
@@ -418,7 +424,7 @@ export function handleVaporize(event: VaporizationEvent): void {
     event.params.solidHeldUpdate.newPar.value,
     event.params.solidHeldUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateTwo, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateTwo, event)
 
   const balanceUpdateThree = new BalanceUpdate(
     event.params.solidAccountOwner,
@@ -427,15 +433,15 @@ export function handleVaporize(event: VaporizationEvent): void {
     event.params.solidOwedUpdate.newPar.value,
     event.params.solidOwedUpdate.newPar.sign
   )
-  handleDyDxBalanceUpdateForAccount(balanceUpdateThree, event)
+  handleDolomiteMarginBalanceUpdateForAccount(balanceUpdateThree, event)
 }
 
 export function handleSetExpiry(event: ExpirySetEvent): void {
   const marginAccount = getOrCreateMarginAccount(event.params.owner, event.params.number, event.block)
   marginAccount.save()
 
-  const dydx = DyDx.bind(Address.fromString(SOLO_MARGIN_ADDRESS))
-  const tokenAddress = dydx.getMarketTokenAddress(event.params.marketId).toHexString()
+  const protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
+  const tokenAddress = protocol.getMarketTokenAddress(event.params.marketId).toHexString()
   const token = Token.load(tokenAddress) as Token
   const transaction = getOrCreateTransaction(event)
 
