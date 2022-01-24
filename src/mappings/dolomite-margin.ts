@@ -28,7 +28,7 @@ import {
   getOrCreateDolomiteMarginForCall,
   getOrCreateTransaction,
   ONE_BD,
-  ZERO_BD
+  ZERO_BD, ZERO_BI
 } from './helpers'
 import { DOLOMITE_MARGIN_ADDRESS } from './generated/constants'
 import { BalanceUpdate } from './dolomite-margin-types'
@@ -446,6 +446,12 @@ export function handleSetExpiry(event: ExpirySetEvent): void {
   const transaction = getOrCreateTransaction(event)
 
   const tokenValue = getOrCreateTokenValue(marginAccount, token, transaction)
-  tokenValue.expirationTimestamp = event.block.timestamp
+  if (event.params.time.equals(ZERO_BI)) {
+    tokenValue.expirationTimestamp = null
+    tokenValue.expiryAddress = null
+  } else {
+    tokenValue.expirationTimestamp = event.params.time
+    tokenValue.expiryAddress = event.address
+  }
   tokenValue.save()
 }
