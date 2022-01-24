@@ -8,8 +8,8 @@ dataSources:
     name: MarginTrade
     network: {{network}}
     source:
-      address: '{{dyDxAddress}}'
-      abi: DyDx
+      address: '{{dolomiteMarginAddress}}'
+      abi: DolomiteMargin
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
@@ -19,8 +19,8 @@ dataSources:
       entities:
         - Token
       abis:
-        - name: DyDx
-          file: ./abis/dydx.json
+        - name: DolomiteMargin
+          file: ./abis/dolomite-margin.json
         - name: ERC20
           file: ./abis/erc20.json
         - name: ERC20SymbolBytes
@@ -51,7 +51,7 @@ dataSources:
     network: {{network}}
     source:
       address: '{{expiryAddress}}'
-      abi: DyDx
+      abi: DolomiteMargin
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
@@ -61,8 +61,8 @@ dataSources:
       entities:
         - Token
       abis:
-        - name: DyDx
-          file: ./abis/dydx.json
+        - name: DolomiteMargin
+          file: ./abis/dolomite-margin.json
         - name: ERC20
           file: ./abis/erc20.json
         - name: ERC20SymbolBytes
