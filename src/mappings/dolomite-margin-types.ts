@@ -1,6 +1,6 @@
 import { Address, BigDecimal, BigInt } from '@graphprotocol/graph-ts'
-import { BI_18, convertTokenToDecimal, ZERO_BI } from './helpers'
-import { ethereum } from '@graphprotocol/graph-ts'
+import { convertTokenToDecimal, ZERO_BI } from './helpers'
+import { Token } from '../types/schema'
 
 export class BalanceUpdate {
 
@@ -12,50 +12,18 @@ export class BalanceUpdate {
   constructor(
     accountOwner: Address,
     accountNumber: BigInt,
-    market: BigInt,
+    token: Token,
     valuePar: BigInt,
     sign: boolean
   ) {
     this.accountOwner = accountOwner
     this.accountNumber = accountNumber
-    this.market = market
+    this.market = token.marketId
     if (sign) {
-      this.valuePar = convertTokenToDecimal(valuePar, BI_18)
+      this.valuePar = convertTokenToDecimal(valuePar, token.decimals)
     } else {
-      this.valuePar = convertTokenToDecimal(ZERO_BI.minus(valuePar), BI_18)
+      this.valuePar = convertTokenToDecimal(ZERO_BI.minus(valuePar), token.decimals)
     }
   }
 
-}
-
-export class ValueStruct {
-
-  private tuple: ethereum.Tuple
-
-  constructor(tuple: ethereum.Tuple) {
-    this.tuple = tuple
-  }
-
-  get sign(): boolean {
-    return this.tuple[0].toBoolean()
-  }
-
-  get value(): BigInt {
-    return this.tuple[1].toBigInt()
-  }
-
-  abs(): ValueStruct {
-    return ValueStruct.fromFields(true, this.value.abs())
-  }
-
-  applied(): BigInt {
-    return this.sign ? this.value : this.value.neg()
-  }
-
-  static fromFields(sign: boolean, value: BigInt): ValueStruct {
-    return new ValueStruct(new ethereum.Tuple(
-      ethereum.Value.fromBoolean(sign),
-      ethereum.Value.fromUnsignedBigInt(value)
-    ))
-  }
 }

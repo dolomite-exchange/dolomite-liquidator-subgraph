@@ -59,6 +59,12 @@ type Token @entity {
   name: String!
   decimals: BigInt!
 
-  # Taken from dYdX
+  # Taken from DolomiteMargin
   marketId: BigInt!
+}
+
+type MarketIdToTokenAddress @entity {
+  # marketId
+  id: ID!
+  tokenAddress: Bytes!
 }

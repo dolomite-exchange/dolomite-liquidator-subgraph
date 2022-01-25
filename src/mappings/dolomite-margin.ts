@@ -19,7 +19,14 @@ import {
   LogVaporize as VaporizationEvent,
   LogWithdraw as WithdrawEvent
 } from '../types/MarginTrade/DolomiteMargin'
-import { MarginAccount, MarginAccountTokenValue, MarketRiskInfo, Token, Transaction } from '../types/schema'
+import {
+  MarginAccount,
+  MarginAccountTokenValue,
+  MarketIdToTokenAddress,
+  MarketRiskInfo,
+  Token,
+  Transaction
+} from '../types/schema'
 import {
   BD_ONE_ETH,
   fetchTokenDecimals,
@@ -28,7 +35,8 @@ import {
   getOrCreateDolomiteMarginForCall,
   getOrCreateTransaction,
   ONE_BD,
-  ZERO_BD, ZERO_BI
+  ZERO_BD,
+  ZERO_BI
 } from './helpers'
 import { DOLOMITE_MARGIN_ADDRESS } from './generated/constants'
 import { BalanceUpdate } from './dolomite-margin-types'
@@ -113,7 +121,7 @@ export function handleMarketAdded(event: AddMarketEvent): void {
 
   if (event.address.toHexString() != DOLOMITE_MARGIN_ADDRESS) {
     log.error('Invalid DolomiteMargin address, found {} and {}', [event.address.toHexString(), DOLOMITE_MARGIN_ADDRESS])
-    throw new Error()
+    return
   }
 
   let protocol = DolomiteMarginProtocol.bind(event.address)
@@ -138,6 +146,10 @@ export function handleMarketAdded(event: AddMarketEvent): void {
     }
     token.decimals = decimals
     token.save()
+
+    let mapper = new MarketIdToTokenAddress(token.marketId.toString())
+    mapper.tokenAddress = tokenAddress
+    mapper.save()
   }
 }
 
@@ -250,10 +262,13 @@ export function handleSetLiquidationSpreadPremium(event: MarketSpreadPremiumUpda
 }
 
 export function handleDeposit(event: DepositEvent): void {
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  let mapper = MarketIdToTokenAddress.load(event.params.market.toString()) as MarketIdToTokenAddress
+  let token = Token.load(mapper.tokenAddress.toHexString()) as Token
   const balanceUpdate = new BalanceUpdate(
     event.params.accountOwner,
     event.params.accountNumber,
-    event.params.market,
+    token,
     event.params.update.newPar.value,
     event.params.update.newPar.sign
   )
@@ -261,10 +276,13 @@ export function handleDeposit(event: DepositEvent): void {
 }
 
 export function handleWithdraw(event: WithdrawEvent): void {
+  let mapper = MarketIdToTokenAddress.load(event.params.market.toString()) as MarketIdToTokenAddress
+  let token = Token.load(mapper.tokenAddress.toHexString()) as Token
+
   const balanceUpdate = new BalanceUpdate(
     event.params.accountOwner,
     event.params.accountNumber,
-    event.params.market,
+    token,
     event.params.update.newPar.value,
     event.params.update.newPar.sign
   )
@@ -272,10 +290,13 @@ export function handleWithdraw(event: WithdrawEvent): void {
 }
 
 export function handleTransfer(event: TransferEvent): void {
+  let mapper = MarketIdToTokenAddress.load(event.params.market.toString()) as MarketIdToTokenAddress
+  let token = Token.load(mapper.tokenAddress.toHexString()) as Token
+
   const balanceUpdateOne = new BalanceUpdate(
     event.params.accountOneOwner,
     event.params.accountOneNumber,
-    event.params.market,
+    token,
     event.params.updateOne.newPar.value,
     event.params.updateOne.newPar.sign
   )
@@ -284,7 +305,7 @@ export function handleTransfer(event: TransferEvent): void {
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.accountTwoOwner,
     event.params.accountTwoNumber,
-    event.params.market,
+    token,
     event.params.updateTwo.newPar.value,
     event.params.updateTwo.newPar.sign
   )
@@ -292,10 +313,16 @@ export function handleTransfer(event: TransferEvent): void {
 }
 
 export function handleBuy(event: BuyEvent): void {
+  let makerMapper = MarketIdToTokenAddress.load(event.params.makerMarket.toString()) as MarketIdToTokenAddress
+  let makerToken = Token.load(makerMapper.tokenAddress.toHexString()) as Token
+
+  let takerMapper = MarketIdToTokenAddress.load(event.params.takerMarket.toString()) as MarketIdToTokenAddress
+  let takerToken = Token.load(takerMapper.tokenAddress.toHexString()) as Token
+
   const balanceUpdateOne = new BalanceUpdate(
     event.params.accountOwner,
     event.params.accountNumber,
-    event.params.makerMarket,
+    makerToken,
     event.params.makerUpdate.newPar.value,
     event.params.makerUpdate.newPar.sign
   )
@@ -304,7 +331,7 @@ export function handleBuy(event: BuyEvent): void {
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.accountOwner,
     event.params.accountNumber,
-    event.params.takerMarket,
+    takerToken,
     event.params.takerUpdate.newPar.value,
     event.params.takerUpdate.newPar.sign
   )
@@ -312,10 +339,16 @@ export function handleBuy(event: BuyEvent): void {
 }
 
 export function handleSell(event: SellEvent): void {
+  let makerMapper = MarketIdToTokenAddress.load(event.params.makerMarket.toString()) as MarketIdToTokenAddress
+  let makerToken = Token.load(makerMapper.tokenAddress.toHexString()) as Token
+
+  let takerMapper = MarketIdToTokenAddress.load(event.params.takerMarket.toString()) as MarketIdToTokenAddress
+  let takerToken = Token.load(takerMapper.tokenAddress.toHexString()) as Token
+
   const balanceUpdateOne = new BalanceUpdate(
     event.params.accountOwner,
     event.params.accountNumber,
-    event.params.makerMarket,
+    makerToken,
     event.params.makerUpdate.newPar.value,
     event.params.makerUpdate.newPar.sign
   )
@@ -324,7 +357,7 @@ export function handleSell(event: SellEvent): void {
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.accountOwner,
     event.params.accountNumber,
-    event.params.takerMarket,
+    takerToken,
     event.params.takerUpdate.newPar.value,
     event.params.takerUpdate.newPar.sign
   )
@@ -332,10 +365,16 @@ export function handleSell(event: SellEvent): void {
 }
 
 export function handleTrade(event: TradeEvent): void {
+  let inputMapper = MarketIdToTokenAddress.load(event.params.inputMarket.toString()) as MarketIdToTokenAddress
+  let inputToken = Token.load(inputMapper.tokenAddress.toHexString()) as Token
+
+  let outputMapper = MarketIdToTokenAddress.load(event.params.outputMarket.toString()) as MarketIdToTokenAddress
+  let outputToken = Token.load(outputMapper.tokenAddress.toHexString()) as Token
+
   const balanceUpdateOne = new BalanceUpdate(
     event.params.makerAccountOwner,
     event.params.makerAccountNumber,
-    event.params.inputMarket,
+    inputToken,
     event.params.makerInputUpdate.newPar.value,
     event.params.makerInputUpdate.newPar.sign
   )
@@ -344,7 +383,7 @@ export function handleTrade(event: TradeEvent): void {
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.makerAccountOwner,
     event.params.makerAccountNumber,
-    event.params.outputMarket,
+    outputToken,
     event.params.makerOutputUpdate.newPar.value,
     event.params.makerOutputUpdate.newPar.sign
   )
@@ -353,7 +392,7 @@ export function handleTrade(event: TradeEvent): void {
   const balanceUpdateThree = new BalanceUpdate(
     event.params.takerAccountOwner,
     event.params.takerAccountNumber,
-    event.params.inputMarket,
+    inputToken,
     event.params.takerInputUpdate.newPar.value,
     event.params.takerInputUpdate.newPar.sign
   )
@@ -362,7 +401,7 @@ export function handleTrade(event: TradeEvent): void {
   const balanceUpdateFour = new BalanceUpdate(
     event.params.takerAccountOwner,
     event.params.takerAccountNumber,
-    event.params.outputMarket,
+    outputToken,
     event.params.takerOutputUpdate.newPar.value,
     event.params.takerOutputUpdate.newPar.sign
   )
@@ -370,10 +409,16 @@ export function handleTrade(event: TradeEvent): void {
 }
 
 export function handleLiquidate(event: LiquidationEvent): void {
+  let heldMapper = MarketIdToTokenAddress.load(event.params.heldMarket.toString()) as MarketIdToTokenAddress
+  let heldToken = Token.load(heldMapper.tokenAddress.toHexString()) as Token
+
+  let owedMapper = MarketIdToTokenAddress.load(event.params.owedMarket.toString()) as MarketIdToTokenAddress
+  let owedToken = Token.load(owedMapper.tokenAddress.toHexString()) as Token
+
   const balanceUpdateOne = new BalanceUpdate(
     event.params.liquidAccountOwner,
     event.params.liquidAccountNumber,
-    event.params.heldMarket,
+    heldToken,
     event.params.liquidHeldUpdate.newPar.value,
     event.params.liquidHeldUpdate.newPar.sign
   )
@@ -382,7 +427,7 @@ export function handleLiquidate(event: LiquidationEvent): void {
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.liquidAccountOwner,
     event.params.liquidAccountNumber,
-    event.params.owedMarket,
+    owedToken,
     event.params.liquidOwedUpdate.newPar.value,
     event.params.liquidOwedUpdate.newPar.sign
   )
@@ -391,7 +436,7 @@ export function handleLiquidate(event: LiquidationEvent): void {
   const balanceUpdateThree = new BalanceUpdate(
     event.params.solidAccountOwner,
     event.params.solidAccountNumber,
-    event.params.heldMarket,
+    heldToken,
     event.params.solidHeldUpdate.newPar.value,
     event.params.solidHeldUpdate.newPar.sign
   )
@@ -400,7 +445,7 @@ export function handleLiquidate(event: LiquidationEvent): void {
   const balanceUpdateFour = new BalanceUpdate(
     event.params.solidAccountOwner,
     event.params.solidAccountNumber,
-    event.params.owedMarket,
+    owedToken,
     event.params.solidOwedUpdate.newPar.value,
     event.params.solidOwedUpdate.newPar.sign
   )
@@ -408,10 +453,16 @@ export function handleLiquidate(event: LiquidationEvent): void {
 }
 
 export function handleVaporize(event: VaporizationEvent): void {
+  let heldMapper = MarketIdToTokenAddress.load(event.params.heldMarket.toString()) as MarketIdToTokenAddress
+  let heldToken = Token.load(heldMapper.tokenAddress.toHexString()) as Token
+
+  let owedMapper = MarketIdToTokenAddress.load(event.params.owedMarket.toString()) as MarketIdToTokenAddress
+  let owedToken = Token.load(owedMapper.tokenAddress.toHexString()) as Token
+
   const balanceUpdateOne = new BalanceUpdate(
     event.params.vaporAccountOwner,
     event.params.vaporAccountNumber,
-    event.params.owedMarket,
+    owedToken,
     event.params.vaporOwedUpdate.newPar.value,
     event.params.vaporOwedUpdate.newPar.sign
   )
@@ -420,7 +471,7 @@ export function handleVaporize(event: VaporizationEvent): void {
   const balanceUpdateTwo = new BalanceUpdate(
     event.params.solidAccountOwner,
     event.params.solidAccountNumber,
-    event.params.heldMarket,
+    heldToken,
     event.params.solidHeldUpdate.newPar.value,
     event.params.solidHeldUpdate.newPar.sign
   )
@@ -429,7 +480,7 @@ export function handleVaporize(event: VaporizationEvent): void {
   const balanceUpdateThree = new BalanceUpdate(
     event.params.solidAccountOwner,
     event.params.solidAccountNumber,
-    event.params.owedMarket,
+    owedToken,
     event.params.solidOwedUpdate.newPar.value,
     event.params.solidOwedUpdate.newPar.sign
   )
