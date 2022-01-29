@@ -62,7 +62,7 @@ function getOrCreateTokenValue(
   token: Token,
   transaction: Transaction
 ): MarginAccountTokenValue {
-  const id = `${marginAccount.user}-${marginAccount.accountNumber.toString()}-${token.marketId.toString()}`
+  const id = `${marginAccount.user.toHexString()}-${marginAccount.accountNumber.toString()}-${token.marketId.toString()}`
   let tokenValue = MarginAccountTokenValue.load(id)
   if (tokenValue === null) {
     tokenValue = new MarginAccountTokenValue(id)
@@ -89,17 +89,15 @@ function handleDolomiteMarginBalanceUpdateForAccount(balanceUpdate: BalanceUpdat
 
   if (tokenValue.valuePar.lt(ZERO_BD) && balanceUpdate.valuePar.ge(ZERO_BD)) {
     // The user is going from a negative balance to a positive one. Remove from the list
-    let index = marginAccount.borrowedMarketIds.indexOf(tokenValue.id)
+    let index = marginAccount.borrowMarketIds.indexOf(balanceUpdate.market)
     if (index != -1) {
-      let arrayCopy = marginAccount.borrowedMarketIds
-      arrayCopy.splice(index, 1)
-      marginAccount.borrowedMarketIds = arrayCopy
+      marginAccount.borrowMarketIds = marginAccount.borrowMarketIds.splice(index, 1)
     }
   } else if (tokenValue.valuePar.ge(ZERO_BD) && balanceUpdate.valuePar.lt(ZERO_BD)) {
     // The user is going from a positive balance to a negative one, add it to the list
-    marginAccount.borrowedMarketIds = marginAccount.borrowedMarketIds.concat([tokenValue.id])
+    marginAccount.borrowMarketIds = marginAccount.borrowMarketIds.concat([balanceUpdate.market])
   }
-  marginAccount.hasBorrowedValue = marginAccount.borrowedMarketIds.length > 0
+  marginAccount.hasBorrowValue = marginAccount.borrowMarketIds.length > 0
 
   tokenValue.valuePar = balanceUpdate.valuePar
   log.info(
@@ -489,6 +487,21 @@ export function handleVaporize(event: VaporizationEvent): void {
 
 export function handleSetExpiry(event: ExpirySetEvent): void {
   const marginAccount = getOrCreateMarginAccount(event.params.owner, event.params.number, event.block)
+  if (event.params.time.equals(ZERO_BI)) {
+    // remove the market ID
+    let index = marginAccount.expirationMarketIds.indexOf(event.params.marketId)
+    if (index != -1) {
+      marginAccount.expirationMarketIds = marginAccount.expirationMarketIds.splice(index, 1)
+    }
+    marginAccount.hasExpiration = marginAccount.expirationMarketIds.length > 0
+  } else {
+    // add the market ID, if necessary
+    let index = marginAccount.expirationMarketIds.indexOf(event.params.marketId)
+    if (index == -1) {
+      marginAccount.expirationMarketIds = marginAccount.expirationMarketIds.concat([event.params.marketId])
+    }
+    marginAccount.hasExpiration = true
+  }
   marginAccount.save()
 
   const protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
