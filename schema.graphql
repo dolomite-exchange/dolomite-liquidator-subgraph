@@ -1,12 +1,11 @@
 type Transaction @entity {
-  id: ID! # txn hash
+  id: ID! # Defined as transaction hash
   blockNumber: BigInt!
   timestamp: BigInt!
 }
 
 type DolomiteMargin @entity {
-  # contract address
-  id: ID!
+  id: ID! # Defined as contract address
 
   numberOfMarkets: Int!
 
@@ -18,7 +17,7 @@ type DolomiteMargin @entity {
 }
 
 type MarketRiskInfo @entity {
-  id: ID! # Defined as marketId
+  id: ID! # Defined as token address
   token: Token!
   marginPremium: BigDecimal!
   liquidationRewardPremium: BigDecimal!
@@ -32,8 +31,8 @@ type MarginAccount @entity {
   lastUpdatedTimestamp: BigInt! # Timestamp at which any token value was last updated
   lastUpdatedBlockNumber: BigInt!
   tokenValues: [MarginAccountTokenValue!]! @derivedFrom(field: "marginAccount")
-  borrowMarketIds: [BigInt!]! # marketId
-  expirationMarketIds: [BigInt!]!
+  borrowTokens: [Token!]!
+  expirationTokens: [Token!]!
   hasBorrowValue: Boolean!
   hasExpiration: Boolean!
 }
@@ -51,8 +50,7 @@ type MarginAccountTokenValue @entity {
 }
 
 type Token @entity {
-  # token address
-  id: ID!
+  id: ID! # Defined as token address
 
   # mirrored from the smart contract
   symbol: String!
@@ -63,8 +61,7 @@ type Token @entity {
   marketId: BigInt!
 }
 
-type MarketIdToTokenAddress @entity {
-  # marketId
-  id: ID!
-  tokenAddress: Bytes!
+type TokenMarketIdReverseMap @entity {
+  id: ID! # Defined as marketId.toString()
+  token: Token!
 }

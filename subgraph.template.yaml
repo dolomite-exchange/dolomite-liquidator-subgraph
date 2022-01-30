@@ -38,6 +38,8 @@ dataSources:
           handler: handleSetMinBorrowedValue
         - event: LogAddMarket(uint256,address)
           handler: handleMarketAdded
+        - event: LogRemoveMarket(uint256,address)
+          handler: handleMarketRemoved
         - event: LogSetIsClosing(uint256,bool)
           handler: handleSetIsMarketClosing
         - event: LogSetMarginPremium(uint256,(uint256))
@@ -61,7 +63,7 @@ dataSources:
         - event: LogVaporize(indexed address,uint256,indexed address,uint256,uint256,uint256,((bool,uint256),(bool,uint128)),((bool,uint256),(bool,uint128)),((bool,uint256),(bool,uint128)))
           handler: handleVaporize
   - kind: ethereum/contract
-    name: MarginTradeExpiryV2
+    name: MarginTradeExpiry
     network: {{network}}
     source:
       address: '{{expiryAddress}}'

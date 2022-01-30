@@ -1,4 +1,4 @@
-/* eslint-disable prefer-const */
+/* eslint-disable prefer-const,@typescript-eslint/no-non-null-assertion */
 import {
   DolomiteMargin as DolomiteMarginProtocol,
   ExpirySet as ExpirySetEvent,
@@ -6,6 +6,7 @@ import {
   LogBuy as BuyEvent,
   LogDeposit as DepositEvent,
   LogLiquidate as LiquidationEvent,
+  LogRemoveMarket as RemoveMarketEvent,
   LogSell as SellEvent,
   LogSetEarningsRate as EarningsRateUpdateEvent,
   LogSetIsClosing as IsClosingUpdateEvent,
@@ -22,9 +23,9 @@ import {
 import {
   MarginAccount,
   MarginAccountTokenValue,
-  MarketIdToTokenAddress,
   MarketRiskInfo,
   Token,
+  TokenMarketIdReverseMap,
   Transaction
 } from '../types/schema'
 import {
@@ -40,7 +41,7 @@ import {
 } from './helpers'
 import { DOLOMITE_MARGIN_ADDRESS } from './generated/constants'
 import { BalanceUpdate } from './dolomite-margin-types'
-import { Address, BigDecimal, BigInt, ethereum, log } from '@graphprotocol/graph-ts'
+import { Address, BigDecimal, BigInt, ethereum, log, store } from '@graphprotocol/graph-ts'
 
 function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: ethereum.Block): MarginAccount {
   const id = `${owner.toHexString()}-${accountNumber.toString()}`
@@ -78,26 +79,33 @@ function getOrCreateTokenValue(
   return tokenValue
 }
 
-function handleDolomiteMarginBalanceUpdateForAccount(balanceUpdate: BalanceUpdate, event: ethereum.Event): MarginAccount {
+function handleDolomiteMarginBalanceUpdateForAccount(
+  balanceUpdate: BalanceUpdate,
+  event: ethereum.Event
+): MarginAccount {
   let marginAccount = getOrCreateMarginAccount(balanceUpdate.accountOwner, balanceUpdate.accountNumber, event.block)
 
-  let protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
-  let tokenAddress = protocol.getMarketTokenAddress(balanceUpdate.market)
-  let token = Token.load(tokenAddress.toHexString())
+  let tokenAddress = TokenMarketIdReverseMap.load(balanceUpdate.market.toString())!.token
+  let token = Token.load(tokenAddress) as Token
   let transaction = getOrCreateTransaction(event)
-  let tokenValue = getOrCreateTokenValue(marginAccount, token as Token, transaction)
+  let tokenValue = getOrCreateTokenValue(marginAccount, token, transaction)
+  let oldPar = tokenValue.valuePar
 
-  if (tokenValue.valuePar.lt(ZERO_BD) && balanceUpdate.valuePar.ge(ZERO_BD)) {
+  if (oldPar.lt(ZERO_BD) && balanceUpdate.valuePar.ge(ZERO_BD)) {
     // The user is going from a negative balance to a positive one. Remove from the list
-    let index = marginAccount.borrowMarketIds.indexOf(balanceUpdate.market)
+    let index = marginAccount.borrowTokens.indexOf(token.id)
     if (index != -1) {
-      marginAccount.borrowMarketIds = marginAccount.borrowMarketIds.splice(index, 1)
+      let copy = marginAccount.borrowTokens
+      copy.splice(index, 1)
+      // NOTE we must use the copy here because the return value of #splice isn't the new array. Rather, it returns the
+      // DELETED element only
+      marginAccount.borrowTokens = copy
     }
-  } else if (tokenValue.valuePar.ge(ZERO_BD) && balanceUpdate.valuePar.lt(ZERO_BD)) {
+  } else if (oldPar.ge(ZERO_BD) && balanceUpdate.valuePar.lt(ZERO_BD)) {
     // The user is going from a positive balance to a negative one, add it to the list
-    marginAccount.borrowMarketIds = marginAccount.borrowMarketIds.concat([balanceUpdate.market])
+    marginAccount.borrowTokens = marginAccount.borrowTokens.concat([token.id])
   }
-  marginAccount.hasBorrowValue = marginAccount.borrowMarketIds.length > 0
+  marginAccount.hasBorrowValue = marginAccount.borrowTokens.length > 0
 
   tokenValue.valuePar = balanceUpdate.valuePar
   log.info(
@@ -122,8 +130,8 @@ export function handleMarketAdded(event: AddMarketEvent): void {
     return
   }
 
-  let protocol = DolomiteMarginProtocol.bind(event.address)
 
+  let protocol = DolomiteMarginProtocol.bind(event.address)
   let dolomiteMargin = getOrCreateDolomiteMarginForCall()
   dolomiteMargin.numberOfMarkets = protocol.getNumMarkets().toI32()
   dolomiteMargin.save()
@@ -145,10 +153,32 @@ export function handleMarketAdded(event: AddMarketEvent): void {
     token.decimals = decimals
     token.save()
 
-    let mapper = new MarketIdToTokenAddress(token.marketId.toString())
-    mapper.tokenAddress = tokenAddress
+    let mapper = new TokenMarketIdReverseMap(token.marketId.toString())
+    mapper.token = token.id
     mapper.save()
   }
+
+  let marketInfo = new MarketRiskInfo(tokenAddress.toHexString())
+  marketInfo.token = tokenAddress.toHexString()
+  marketInfo.marginPremium = BigDecimal.fromString('0')
+  marketInfo.liquidationRewardPremium = BigDecimal.fromString('0')
+  marketInfo.isBorrowingDisabled = false
+  marketInfo.save()
+}
+
+export function handleMarketRemoved(event: RemoveMarketEvent): void {
+  log.info(
+    'Removing market[{}] for token {} for hash and index: {}-{}',
+    [event.params.marketId.toString(), event.params.token.toHexString(), event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let dolomiteMargin = getOrCreateDolomiteMarginForCall()
+  dolomiteMargin.numberOfMarkets = dolomiteMargin.numberOfMarkets + 1
+  dolomiteMargin.save()
+
+  let id = TokenMarketIdReverseMap.load(event.params.marketId.toString())!.token
+  store.remove('TokenMarketIdReverseMap', id)
+  store.remove('MarketRiskInfo', id)
 }
 
 export function handleSetIsMarketClosing(event: IsClosingUpdateEvent): void {
@@ -157,15 +187,8 @@ export function handleSetIsMarketClosing(event: IsClosingUpdateEvent): void {
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
-  let dolomiteProtocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
-  let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
-  if (marketInfo === null) {
-    marketInfo = new MarketRiskInfo(event.params.marketId.toString())
-    marketInfo.token = dolomiteProtocol.getMarketTokenAddress(event.params.marketId).toHexString()
-    marketInfo.marginPremium = BigDecimal.fromString('0')
-    marketInfo.liquidationRewardPremium = BigDecimal.fromString('0')
-    marketInfo.isBorrowingDisabled = false
-  }
+  let tokenAddress = TokenMarketIdReverseMap.load(event.params.marketId.toString())!.token
+  let marketInfo = MarketRiskInfo.load(tokenAddress) as MarketRiskInfo
   marketInfo.isBorrowingDisabled = event.params.isClosing
   marketInfo.save()
 }
@@ -227,16 +250,10 @@ export function handleSetMarginPremium(event: MarginPremiumUpdateEvent): void {
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
-  let protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
-  let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
-  if (marketInfo === null) {
-    marketInfo = new MarketRiskInfo(event.params.marketId.toString())
-    marketInfo.token = protocol.getMarketTokenAddress(event.params.marketId).toHexString()
-    marketInfo.liquidationRewardPremium = BigDecimal.fromString('0')
-    marketInfo.isBorrowingDisabled = false
-  }
-  let marginPremium = new BigDecimal(event.params.marginPremium.value)
-  marketInfo.marginPremium = marginPremium.div(BD_ONE_ETH)
+  let tokenAddress = TokenMarketIdReverseMap.load(event.params.marketId.toString())!.token
+  let marketInfo = MarketRiskInfo.load(tokenAddress) as MarketRiskInfo
+  let marginPremiumBD = new BigDecimal(event.params.marginPremium.value)
+  marketInfo.marginPremium = marginPremiumBD.div(BD_ONE_ETH)
   marketInfo.save()
 }
 
@@ -246,23 +263,16 @@ export function handleSetLiquidationSpreadPremium(event: MarketSpreadPremiumUpda
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 
-  let protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
-  let marketInfo = MarketRiskInfo.load(event.params.marketId.toString())
-  if (marketInfo === null) {
-    marketInfo = new MarketRiskInfo(event.params.marketId.toString())
-    marketInfo.token = protocol.getMarketTokenAddress(event.params.marketId).toHexString()
-    marketInfo.marginPremium = BigDecimal.fromString('0')
-    marketInfo.isBorrowingDisabled = false
-  }
-  let spreadPremium = new BigDecimal(event.params.spreadPremium.value)
-  marketInfo.liquidationRewardPremium = spreadPremium.div(BD_ONE_ETH)
+  let tokenAddress = TokenMarketIdReverseMap.load(event.params.marketId.toString())!.token
+  let marketInfo = MarketRiskInfo.load(tokenAddress) as MarketRiskInfo
+  let spreadPremiumBD = new BigDecimal(event.params.spreadPremium.value)
+  marketInfo.liquidationRewardPremium = spreadPremiumBD.div(BD_ONE_ETH)
   marketInfo.save()
 }
 
 export function handleDeposit(event: DepositEvent): void {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  let mapper = MarketIdToTokenAddress.load(event.params.market.toString()) as MarketIdToTokenAddress
-  let token = Token.load(mapper.tokenAddress.toHexString()) as Token
+  let tokenAddress = TokenMarketIdReverseMap.load(event.params.market.toString())!.token
+  let token = Token.load(tokenAddress) as Token
   const balanceUpdate = new BalanceUpdate(
     event.params.accountOwner,
     event.params.accountNumber,
@@ -274,8 +284,8 @@ export function handleDeposit(event: DepositEvent): void {
 }
 
 export function handleWithdraw(event: WithdrawEvent): void {
-  let mapper = MarketIdToTokenAddress.load(event.params.market.toString()) as MarketIdToTokenAddress
-  let token = Token.load(mapper.tokenAddress.toHexString()) as Token
+  let tokenAddress = TokenMarketIdReverseMap.load(event.params.market.toString())!.token
+  let token = Token.load(tokenAddress) as Token
 
   const balanceUpdate = new BalanceUpdate(
     event.params.accountOwner,
@@ -288,8 +298,8 @@ export function handleWithdraw(event: WithdrawEvent): void {
 }
 
 export function handleTransfer(event: TransferEvent): void {
-  let mapper = MarketIdToTokenAddress.load(event.params.market.toString()) as MarketIdToTokenAddress
-  let token = Token.load(mapper.tokenAddress.toHexString()) as Token
+  let tokenAddress = TokenMarketIdReverseMap.load(event.params.market.toString())!.token
+  let token = Token.load(tokenAddress) as Token
 
   const balanceUpdateOne = new BalanceUpdate(
     event.params.accountOneOwner,
@@ -311,11 +321,11 @@ export function handleTransfer(event: TransferEvent): void {
 }
 
 export function handleBuy(event: BuyEvent): void {
-  let makerMapper = MarketIdToTokenAddress.load(event.params.makerMarket.toString()) as MarketIdToTokenAddress
-  let makerToken = Token.load(makerMapper.tokenAddress.toHexString()) as Token
+  let makerTokenAddress = TokenMarketIdReverseMap.load(event.params.makerMarket.toString())!.token
+  let makerToken = Token.load(makerTokenAddress) as Token
 
-  let takerMapper = MarketIdToTokenAddress.load(event.params.takerMarket.toString()) as MarketIdToTokenAddress
-  let takerToken = Token.load(takerMapper.tokenAddress.toHexString()) as Token
+  let takerTokenAddress = TokenMarketIdReverseMap.load(event.params.takerMarket.toString())!.token
+  let takerToken = Token.load(takerTokenAddress) as Token
 
   const balanceUpdateOne = new BalanceUpdate(
     event.params.accountOwner,
@@ -337,11 +347,11 @@ export function handleBuy(event: BuyEvent): void {
 }
 
 export function handleSell(event: SellEvent): void {
-  let makerMapper = MarketIdToTokenAddress.load(event.params.makerMarket.toString()) as MarketIdToTokenAddress
-  let makerToken = Token.load(makerMapper.tokenAddress.toHexString()) as Token
+  let makerTokenAddress = TokenMarketIdReverseMap.load(event.params.makerMarket.toString())!.token
+  let makerToken = Token.load(makerTokenAddress) as Token
 
-  let takerMapper = MarketIdToTokenAddress.load(event.params.takerMarket.toString()) as MarketIdToTokenAddress
-  let takerToken = Token.load(takerMapper.tokenAddress.toHexString()) as Token
+  let takerTokenAddress = TokenMarketIdReverseMap.load(event.params.takerMarket.toString())!.token
+  let takerToken = Token.load(takerTokenAddress) as Token
 
   const balanceUpdateOne = new BalanceUpdate(
     event.params.accountOwner,
@@ -363,11 +373,11 @@ export function handleSell(event: SellEvent): void {
 }
 
 export function handleTrade(event: TradeEvent): void {
-  let inputMapper = MarketIdToTokenAddress.load(event.params.inputMarket.toString()) as MarketIdToTokenAddress
-  let inputToken = Token.load(inputMapper.tokenAddress.toHexString()) as Token
+  let inputTokenAddress = TokenMarketIdReverseMap.load(event.params.inputMarket.toString())!.token
+  let inputToken = Token.load(inputTokenAddress) as Token
 
-  let outputMapper = MarketIdToTokenAddress.load(event.params.outputMarket.toString()) as MarketIdToTokenAddress
-  let outputToken = Token.load(outputMapper.tokenAddress.toHexString()) as Token
+  let outputTokenAddress = TokenMarketIdReverseMap.load(event.params.outputMarket.toString())!.token
+  let outputToken = Token.load(outputTokenAddress) as Token
 
   const balanceUpdateOne = new BalanceUpdate(
     event.params.makerAccountOwner,
@@ -407,11 +417,11 @@ export function handleTrade(event: TradeEvent): void {
 }
 
 export function handleLiquidate(event: LiquidationEvent): void {
-  let heldMapper = MarketIdToTokenAddress.load(event.params.heldMarket.toString()) as MarketIdToTokenAddress
-  let heldToken = Token.load(heldMapper.tokenAddress.toHexString()) as Token
+  let heldTokenAddress = TokenMarketIdReverseMap.load(event.params.heldMarket.toString())!.token
+  let heldToken = Token.load(heldTokenAddress) as Token
 
-  let owedMapper = MarketIdToTokenAddress.load(event.params.owedMarket.toString()) as MarketIdToTokenAddress
-  let owedToken = Token.load(owedMapper.tokenAddress.toHexString()) as Token
+  let owedTokenAddress = TokenMarketIdReverseMap.load(event.params.owedMarket.toString())!.token
+  let owedToken = Token.load(owedTokenAddress) as Token
 
   const balanceUpdateOne = new BalanceUpdate(
     event.params.liquidAccountOwner,
@@ -451,11 +461,11 @@ export function handleLiquidate(event: LiquidationEvent): void {
 }
 
 export function handleVaporize(event: VaporizationEvent): void {
-  let heldMapper = MarketIdToTokenAddress.load(event.params.heldMarket.toString()) as MarketIdToTokenAddress
-  let heldToken = Token.load(heldMapper.tokenAddress.toHexString()) as Token
+  let heldTokenAddress = TokenMarketIdReverseMap.load(event.params.heldMarket.toString())!.token
+  let heldToken = Token.load(heldTokenAddress) as Token
 
-  let owedMapper = MarketIdToTokenAddress.load(event.params.owedMarket.toString()) as MarketIdToTokenAddress
-  let owedToken = Token.load(owedMapper.tokenAddress.toHexString()) as Token
+  let owedTokenAddress = TokenMarketIdReverseMap.load(event.params.owedMarket.toString())!.token
+  let owedToken = Token.load(owedTokenAddress) as Token
 
   const balanceUpdateOne = new BalanceUpdate(
     event.params.vaporAccountOwner,
@@ -486,27 +496,31 @@ export function handleVaporize(event: VaporizationEvent): void {
 }
 
 export function handleSetExpiry(event: ExpirySetEvent): void {
+  const tokenAddress = TokenMarketIdReverseMap.load(event.params.marketId.toString())!.token
+  const token = Token.load(tokenAddress) as Token
+
   const marginAccount = getOrCreateMarginAccount(event.params.owner, event.params.number, event.block)
   if (event.params.time.equals(ZERO_BI)) {
     // remove the market ID
-    let index = marginAccount.expirationMarketIds.indexOf(event.params.marketId)
+    let index = marginAccount.expirationTokens.indexOf(token.id)
     if (index != -1) {
-      marginAccount.expirationMarketIds = marginAccount.expirationMarketIds.splice(index, 1)
+      let copy = marginAccount.expirationTokens
+      copy.splice(index, 1)
+      // NOTE we must use the copy here because the return value of #splice isn't the new array. Rather, it returns the
+      // DELETED element only
+      marginAccount.expirationTokens = copy
     }
-    marginAccount.hasExpiration = marginAccount.expirationMarketIds.length > 0
+    marginAccount.hasExpiration = marginAccount.expirationTokens.length > 0
   } else {
     // add the market ID, if necessary
-    let index = marginAccount.expirationMarketIds.indexOf(event.params.marketId)
+    let index = marginAccount.expirationTokens.indexOf(token.id)
     if (index == -1) {
-      marginAccount.expirationMarketIds = marginAccount.expirationMarketIds.concat([event.params.marketId])
+      marginAccount.expirationTokens = marginAccount.expirationTokens.concat([token.id])
     }
     marginAccount.hasExpiration = true
   }
   marginAccount.save()
 
-  const protocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
-  const tokenAddress = protocol.getMarketTokenAddress(event.params.marketId).toHexString()
-  const token = Token.load(tokenAddress) as Token
   const transaction = getOrCreateTransaction(event)
 
   const tokenValue = getOrCreateTokenValue(marginAccount, token, transaction)

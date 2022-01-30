@@ -20,7 +20,7 @@ export let SECONDS_IN_YEAR = BigInt.fromI32(31536000)
 
 export function bigDecimalAbs(bd: BigDecimal): BigDecimal {
   if (bd.lt(ZERO_BD)) {
-    return ZERO_BD.minus(bd)
+    return bd.neg()
   } else {
     return bd
   }
