@@ -154,12 +154,11 @@ export function getOrCreateDolomiteMarginForCall(): DolomiteMargin {
     dolomiteMargin.numberOfMarkets = 0
 
     let dolomiteMarginProtocol = DolomiteMarginProtocol.bind(Address.fromString(DOLOMITE_MARGIN_ADDRESS))
-    let riskParams = dolomiteMarginProtocol.getRiskParams()
 
-    let liquidationRatioBD = new BigDecimal(riskParams.marginRatio.value)
-    let liquidationRewardBD = new BigDecimal(riskParams.liquidationSpread.value)
-    let earningsRateBD = new BigDecimal(riskParams.earningsRate.value)
-    let minBorrowedValueBD = new BigDecimal(riskParams.minBorrowedValue.value)
+    let liquidationRatioBD = new BigDecimal(dolomiteMarginProtocol.getMarginRatio().value)
+    let liquidationRewardBD = new BigDecimal(dolomiteMarginProtocol.getLiquidationSpread().value)
+    let earningsRateBD = new BigDecimal(dolomiteMarginProtocol.getEarningsRate().value)
+    let minBorrowedValueBD = new BigDecimal(dolomiteMarginProtocol.getMinBorrowedValue().value)
 
     dolomiteMargin.liquidationRatio = liquidationRatioBD.div(BD_ONE_ETH).plus(ONE_BD)
     dolomiteMargin.liquidationReward = liquidationRewardBD.div(BD_ONE_ETH).plus(ONE_BD)
