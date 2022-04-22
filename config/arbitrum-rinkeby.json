@@ -1,6 +1,6 @@
 {
   "network": "arbitrum-rinkeby",
-  "startBlock": "11221168",
-  "dolomiteMarginAddress": "0xCA62F63955B31d2dbedE96aB36396F0a54c3621e",
-  "expiryAddress": "0x17Ee6edCB3976dCD8d8E3b7aAD2a7185A0D49b0D"
+  "startBlock": "11364407",
+  "dolomiteMarginAddress": "0x28cb259f65fB193e0EDA8f1f7bf5DEae75b0Be51",
+  "expiryAddress": "0x3E93c9a8d978BC9B247fa8D32d3686775152Fb16"
 }

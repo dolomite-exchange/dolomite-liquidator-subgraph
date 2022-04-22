@@ -1,7 +1,7 @@
 {
   "network": "arbitrum-one",
-  "startBlock": "9825932",
-  "dolomiteMarginAddress": "0xe44CEFD2E6b0B846e2720e7b823e173d9FDf8601",
-  "expiryAddress": "0x9FfA7607736ed48Ad81B9645675CC1ADa15A0FaE"
+  "startBlock": "10319209",
+  "dolomiteMarginAddress": "0x6a76986201E1906eb8d887Bb4Ad74b55888617af",
+  "expiryAddress": "0x0d64b6C7E51843c053e5AE9A92f88B0A81DCD8Dc"
 }
 
