@@ -24,9 +24,13 @@ type MarketRiskInfo @entity {
   isBorrowingDisabled: Boolean!
 }
 
+type User @entity {
+  id: ID! # Defined as user address
+}
+
 type MarginAccount @entity {
   id: ID! # Defined as "userAddress-accountNumber"
-  user: Bytes!
+  user: User!
   accountNumber: BigInt!
   lastUpdatedTimestamp: BigInt! # Timestamp at which any token value was last updated
   lastUpdatedBlockNumber: BigInt!

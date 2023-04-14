@@ -26,7 +26,7 @@ import {
   MarketRiskInfo,
   Token,
   TokenMarketIdReverseMap,
-  Transaction
+  Transaction, User
 } from '../types/schema'
 import {
   BD_ONE_ETH,
@@ -47,8 +47,14 @@ function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: 
   const id = `${owner.toHexString()}-${accountNumber.toString()}`
   let marginAccount = MarginAccount.load(id)
   if (marginAccount === null) {
+    let user = User.load(owner.toHexString())
+    if (user === null) {
+      user = new User(owner.toHexString())
+      user.save()
+    }
+
     marginAccount = new MarginAccount(id)
-    marginAccount.user = owner
+    marginAccount.user = user.id
     marginAccount.accountNumber = accountNumber
   }
 
@@ -63,7 +69,7 @@ function getOrCreateTokenValue(
   token: Token,
   transaction: Transaction
 ): MarginAccountTokenValue {
-  const id = `${marginAccount.user.toHexString()}-${marginAccount.accountNumber.toString()}-${token.marketId.toString()}`
+  const id = `${marginAccount.user}-${marginAccount.accountNumber.toString()}-${token.marketId.toString()}`
   let tokenValue = MarginAccountTokenValue.load(id)
   if (tokenValue === null) {
     tokenValue = new MarginAccountTokenValue(id)
