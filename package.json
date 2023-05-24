@@ -22,14 +22,14 @@
     "build:arbitrum-one": "yarn prepare-all:arbitrum-one && graph build",
     "create:local": "graph create dolomite-exchange/dolomite-v2 --node http://127.0.0.1:8020",
     "deploy:local": "graph deploy dolomite-exchange/dolomite-v2 --debug --ipfs http://localhost:5001 --node http://127.0.0.1:8020",
-    "deploy:arbitrum-one": "yarn prepare-all:arbitrum-one && graph deploy --product hosted-service dolomite-exchange/dolomite-v2-liquidator-arbitrum",
+    "deploy:arbitrum-one": "yarn prepare-all:arbitrum-one && graph deploy --studio dolomite-liquidator-arbitrum",
     "deploy:arbitrum-rinkeby": "yarn prepare-all:arbitrum-rinkeby && graph deploy --product hosted-service dolomite-exchange/dolomite-v2-liquidator-arb-rinkeby",
     "deploy:arbitrum-goerli": "yarn prepare-all:arbitrum-goerli && graph deploy --product hosted-service dolomite-exchange/liquidator-arbitrum-goerli",
     "deploy:mumbai": "yarn prepare-all:mumbai && graph deploy --product hosted-service dolomite-exchange/dolomite-v2-liquidator-mumbai",
     "watch:local": "graph deploy dolomite-exchange/dolomite-v2 --watch --debug --node http://127.0.0.1:8020/ --ipfs http://localhost:5001"
   },
   "devDependencies": {
-    "@graphprotocol/graph-ts": "^0.24.1",
+    "@graphprotocol/graph-ts": "^0.30.0",
     "@typescript-eslint/eslint-plugin": "^2.0.0",
     "@typescript-eslint/parser": "^2.0.0",
     "eslint": "^6.2.2",

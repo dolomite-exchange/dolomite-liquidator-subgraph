@@ -56,6 +56,10 @@ function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: 
     marginAccount = new MarginAccount(id)
     marginAccount.user = user.id
     marginAccount.accountNumber = accountNumber
+    marginAccount.borrowTokens = []
+    marginAccount.expirationTokens = []
+    marginAccount.hasBorrowValue = false
+    marginAccount.hasExpiration = false
   }
 
   marginAccount.lastUpdatedBlockNumber = block.number
