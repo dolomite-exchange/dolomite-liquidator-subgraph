@@ -1,6 +1,0 @@
-{
-  "network": "arbitrum-goerli",
-  "startBlock": "500449",
-  "dolomiteMarginAddress": "0xb4de6b0Aa8c1187633Ab33a73eF0c840bC9B6D49",
-  "expiryAddress": "0x16Ec03D86cC8B8bb57646b533d6fBda07D992229"
-}

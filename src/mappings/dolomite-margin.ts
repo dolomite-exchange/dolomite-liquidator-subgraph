@@ -43,7 +43,7 @@ import { DOLOMITE_MARGIN_ADDRESS } from './generated/constants'
 import { BalanceUpdate } from './dolomite-margin-types'
 import { Address, BigDecimal, BigInt, ethereum, log, store } from '@graphprotocol/graph-ts'
 
-function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: ethereum.Block): MarginAccount {
+export function getOrCreateMarginAccount(owner: Address, accountNumber: BigInt, block: ethereum.Block): MarginAccount {
   const id = `${owner.toHexString()}-${accountNumber.toString()}`
   let marginAccount = MarginAccount.load(id)
   if (marginAccount === null) {

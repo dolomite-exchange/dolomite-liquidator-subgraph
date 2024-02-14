@@ -1,0 +1,8 @@
+{
+  "network": "base",
+  "startBlock": "10010605",
+  "dolomiteMarginAddress": "0x43C2FDB89A1C491F9FE86E1Ff05bd2BE204Ab4aE",
+  "eventEmitterRegistryAddress": "0x958a9C230360003b548d572Cb88bb25B8A744bf7",
+  "expiryAddress": "0x093b0659a02D6472864E6e42AD18540393f6302f"
+}
+

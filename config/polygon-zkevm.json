@@ -1,0 +1,8 @@
+{
+  "network": "polygon-zkevm",
+  "startBlock": "9597567",
+  "dolomiteMarginAddress": "0x836b557Cf9eF29fcF49C776841191782df34e4e5",
+  "eventEmitterRegistryAddress": "0x2e9BE819D04CB62bF3816B627c9DfF819136CEc4",
+  "expiryAddress": "0xb3F81b0F53CDEe755c70665923e08a8f0e81d0c3"
+}
+

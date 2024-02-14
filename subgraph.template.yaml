@@ -13,7 +13,7 @@ dataSources:
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.5
+      apiVersion: 0.0.7
       language: wasm/assemblyscript
       file: ./src/mappings/dolomite-margin.ts
       entities:
@@ -71,7 +71,7 @@ dataSources:
       startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
-      apiVersion: 0.0.5
+      apiVersion: 0.0.7
       language: wasm/assemblyscript
       file: ./src/mappings/dolomite-margin.ts
       entities:
@@ -88,3 +88,46 @@ dataSources:
       eventHandlers:
         - event: ExpirySet(address,uint256,uint256,uint32)
           handler: handleSetExpiry
+  - kind: ethereum/contract
+    name: EventEmitterRegistry
+    network: {{network}}
+    source:
+      address: '{{eventEmitterRegistryAddress}}'
+      abi: EventEmitterRegistry
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/mappings/event-emitter-registry.ts
+      entities:
+        - AsyncDeposit
+        - AsyncWithdrawal
+      abis:
+        - name: EventEmitterRegistry
+          file: ./abis/event-emitter-registry.json
+        - name: DolomiteMargin
+          file: ./abis/dolomite-margin.json
+      eventHandlers:
+        - event: AsyncDepositCreated(indexed bytes32,indexed address,(bytes32,address,uint256,address,uint256,uint256,bool))
+          handler: handleAsyncDepositCreated
+        - event: AsyncDepositOutputAmountUpdated(indexed bytes32,indexed address,uint256)
+          handler: handleAsyncDepositOutputAmountUpdated
+        - event: AsyncDepositExecuted(indexed bytes32,indexed address)
+          handler: handleAsyncDepositExecuted
+        - event: AsyncDepositFailed(indexed bytes32,indexed address,string)
+          handler: handleAsyncDepositFailed
+        - event: AsyncDepositCancelled(indexed bytes32,indexed address)
+          handler: handleAsyncDepositCancelled
+        - event: AsyncDepositCancelledFailed(indexed bytes32,indexed address,string)
+          handler: handleAsyncDepositCancelledFailed
+        - event: AsyncWithdrawalCreated(indexed bytes32,indexed address,(bytes32,address,uint256,uint256,address,uint256,bool,bool,bytes))
+          handler: handleAsyncWithdrawalCreated
+        - event: AsyncWithdrawalOutputAmountUpdated(indexed bytes32,indexed address,uint256)
+          handler: handleAsyncWithdrawalOutputAmountUpdated
+        - event: AsyncWithdrawalExecuted(indexed bytes32,indexed address)
+          handler: handleAsyncWithdrawalExecuted
+        - event: AsyncWithdrawalFailed(indexed bytes32,indexed address,string)
+          handler: handleAsyncWithdrawalFailed
+        - event: AsyncWithdrawalCancelled(indexed bytes32,indexed address)
+          handler: handleAsyncWithdrawalCancelled
