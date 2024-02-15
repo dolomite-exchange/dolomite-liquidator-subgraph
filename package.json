@@ -12,6 +12,7 @@
     "prepare-all:arbitrum-one": "yarn prepare-config:arbitrum-one && yarn prepare-ts:arbitrum-one && graph codegen --output-dir src/types/ subgraph.yaml",
     "build:arbitrum-one": "yarn prepare-all:arbitrum-one && graph build",
     "deploy:arbitrum-one": "yarn prepare-all:arbitrum-one && graph deploy --studio dolomite-liquidator-arbitrum",
+    "deploy:arbitrum-one:hosted-service": "yarn prepare-all:arbitrum-one && graph deploy --product=hosted-service dolomite-exchange/dolomite-v2-liquidator-arbitrum",
     "prepare-config:polygon-zkevm": "mustache config/polygon-zkevm.json subgraph.template.yaml > subgraph.yaml",
     "prepare-ts:polygon-zkevm": "mkdir -p src/mappings/generated && mustache config/polygon-zkevm.json src/mappings/constants.template.ts > src/mappings/generated/constants.ts",
     "prepare-all:polygon-zkevm": "yarn prepare-config:polygon-zkevm && yarn prepare-ts:polygon-zkevm && graph codegen --output-dir src/types/ subgraph.yaml",
