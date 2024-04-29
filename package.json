@@ -18,6 +18,11 @@
     "prepare-all:polygon-zkevm": "yarn prepare-config:polygon-zkevm && yarn prepare-ts:polygon-zkevm && graph codegen --output-dir src/types/ subgraph.yaml",
     "build:polygon-zkevm": "yarn prepare-all:polygon-zkevm && graph build",
     "deploy:polygon-zkevm": "yarn prepare-all:polygon-zkevm && graph deploy --studio dolomite-liquidator-polygon-zk",
+    "prepare-config:x-layer": "mustache config/x-layer.json subgraph.template.yaml > subgraph.yaml",
+    "prepare-ts:x-layer": "mkdir -p src/mappings/generated && mustache config/x-layer.json src/mappings/constants.template.ts > src/mappings/generated/constants.ts",
+    "prepare-all:x-layer": "yarn prepare-config:x-layer && yarn prepare-ts:x-layer && graph codegen --output-dir src/types/ subgraph.yaml",
+    "build:x-layer": "yarn prepare-all:x-layer && graph build",
+    "deploy:x-layer": "yarn prepare-all:x-layer && graph deploy --studio dolomite-liquidator-x-layer",
     "prepare-config:base": "mustache config/base.json subgraph.template.yaml > subgraph.yaml",
     "prepare-ts:base": "mkdir -p src/mappings/generated && mustache config/base.json src/mappings/constants.template.ts > src/mappings/generated/constants.ts",
     "prepare-all:base": "yarn prepare-config:base && yarn prepare-ts:base && graph codegen --output-dir src/types/ subgraph.yaml",
@@ -25,8 +30,8 @@
     "deploy:base": "yarn prepare-all:base && graph deploy --studio dolomite-liquidator-base"
   },
   "devDependencies": {
-    "@graphprotocol/graph-cli": "^0.54.0",
-    "@graphprotocol/graph-ts": "^0.32.0",
+    "@graphprotocol/graph-cli": "^0.71.0",
+    "@graphprotocol/graph-ts": "^0.35.1",
     "@typescript-eslint/eslint-plugin": "^2.0.0",
     "@typescript-eslint/parser": "^2.0.0",
     "eslint": "^6.2.2",

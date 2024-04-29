@@ -1,0 +1,8 @@
+{
+  "network": "xlayer-mainnet",
+  "startBlock": "832938",
+  "dolomiteMarginAddress": "0x836b557Cf9eF29fcF49C776841191782df34e4e5",
+  "eventEmitterRegistryAddress": "0xd86233E2E53a87F0735C5643f3189cfEC07269bF",
+  "expiryAddress": "0x8B808a1fEEf1d9cdd00Fb46A19e4814e5646197C"
+}
+
