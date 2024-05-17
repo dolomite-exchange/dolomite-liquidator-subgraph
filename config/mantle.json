@@ -1,8 +1,8 @@
 {
   "network": "mantle",
-  "startBlock": "",
-  "dolomiteMarginAddress": "",
-  "eventEmitterRegistryAddress": "",
-  "expiryAddress": ""
+  "startBlock": "63091469",
+  "dolomiteMarginAddress": "0xE6Ef4f0B2455bAB92ce7cC78E35324ab58917De8",
+  "eventEmitterRegistryAddress": "0x778CeA4cE43ba1a3eD6306CA692B8d9D3dFB827c",
+  "expiryAddress": "0x6df6DBF5053c3771217376fb3ef7F1f5d4889a25"
 }
 
