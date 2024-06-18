@@ -139,6 +139,7 @@ export function handleAsyncWithdrawalCancelled(event: AsyncWithdrawalCancelledEv
     event.params.token,
     event.params.key
   )) as AsyncWithdrawal
+  withdrawal.isRetryable = false
   withdrawal.status = AsyncWithdrawalStatus.WITHDRAWAL_CANCELLED
   withdrawal.save()
 }
