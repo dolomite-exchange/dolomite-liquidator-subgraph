@@ -1,5 +1,5 @@
 /* eslint-disable prefer-const */
-import { Address, BigDecimal, BigInt, Bytes, ethereum, log } from '@graphprotocol/graph-ts'
+import { Address, BigDecimal, BigInt, ethereum, log } from '@graphprotocol/graph-ts'
 import { ERC20 } from '../types/MarginTrade/ERC20'
 import { ERC20SymbolBytes } from '../types/MarginTrade/ERC20SymbolBytes'
 import { ERC20NameBytes } from '../types/MarginTrade/ERC20NameBytes'
@@ -7,24 +7,13 @@ import { DolomiteMargin, Transaction } from '../types/schema'
 import { DolomiteMargin as DolomiteMarginProtocol } from '../types/MarginTrade/DolomiteMargin'
 import { DOLOMITE_MARGIN_ADDRESS } from './generated/constants'
 
-export let ZERO_BYTES = new Bytes(0)
 export let ZERO_BI = BigInt.fromI32(0)
 export let ONE_BI = BigInt.fromI32(1)
 export let ZERO_BD = BigDecimal.fromString('0')
 export let ONE_BD = BigDecimal.fromString('1')
 export let BI_10 = BigInt.fromI32(10)
-export let BI_18 = BigInt.fromI32(18)
 export let BI_ONE_ETH = BI_10.pow(18)
 export let BD_ONE_ETH = new BigDecimal(BI_ONE_ETH)
-export let SECONDS_IN_YEAR = BigInt.fromI32(31536000)
-
-export function bigDecimalAbs(bd: BigDecimal): BigDecimal {
-  if (bd.lt(ZERO_BD)) {
-    return bd.neg()
-  } else {
-    return bd
-  }
-}
 
 export function exponentToBigDecimal(decimals: BigInt): BigDecimal {
   let bd = BigDecimal.fromString('1')
@@ -32,14 +21,6 @@ export function exponentToBigDecimal(decimals: BigInt): BigDecimal {
     bd = bd.times(BigDecimal.fromString('10'))
   }
   return bd
-}
-
-export function bigDecimalExp18(): BigDecimal {
-  return BigDecimal.fromString('1000000000000000000')
-}
-
-export function convertEthToDecimal(eth: BigInt): BigDecimal {
-  return eth.toBigDecimal().div(exponentToBigDecimal(BigInt.fromI32(18)))
 }
 
 export function convertTokenToDecimal(tokenAmount: BigInt, exchangeDecimals: BigInt): BigDecimal {
