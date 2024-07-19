@@ -1,5 +1,6 @@
 {
   "network": "arbitrum-one",
+  "networkOrmi": "arbitrum",
   "startBlock": "28220369",
   "dolomiteMarginAddress": "0x6Bd780E7fDf01D77e4d475c821f1e7AE05409072",
   "eventEmitterRegistryAddress": "0x4BfF12773B0Dc3Cb35f174B5CD351F662018CC2F",
