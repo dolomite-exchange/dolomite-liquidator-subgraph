@@ -1,6 +1,6 @@
 {
-  "network": "base",
-  "startBlock": "23848714",
+  "network": "berachain-mainnet",
+  "startBlock": "160822",
   "dolomiteMarginAddress": "0x003Ca23Fd5F0ca87D01F6eC6CD14A8AE60c2b97D",
   "eventEmitterRegistryAddress": "0x6d40138c99F6D9116F738F44A0E6751A42232486",
   "expiryAddress": "0x2Ae007882b91206942c70ADc833A61Ee531D8D5D"
