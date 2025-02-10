@@ -30,20 +30,20 @@
     "build:x-layer": "yarn prepare-all:x-layer && graph build",
 
     "deploy:arbitrum-one": "VERSION=$(cat version.txt) && yarn prepare-all:arbitrum-one && graph deploy --version-label=$VERSION --studio dolomite-liquidator-arbitrum",
-    "deploy:arbitrum-one:ormi": "VERSION=$(cat version.txt) && yarn prepare-all:arbitrum-one && graph deploy dolomite-liquidator-arbitrum --version-label=$VERSION --node https://dolomiteapi.0xgraph.xyz/deploy --ipfs https://dolomiteapi.0xgraph.xyz/ipfs",
+    "deploy:arbitrum-one:ormi": "VERSION=$(cat version.txt) ORMI_DEPLOY_KEY=$(cat ormi-deploy-key.txt) && yarn prepare-all:arbitrum-one && graph deploy dolomite-liquidator-arbitrum --version-label=$VERSION --node https://subgraph.api.dolomite.io/deploy --ipfs https://subgraph.api.dolomite.io/ipfs --deploy-key=$ORMI_DEPLOY_KEY",
     "deploy:arbitrum-one:goldsky": "VERSION=$(cat version.txt) && yarn build:arbitrum-one && goldsky subgraph deploy dolomite-liquidator-arbitrum/$VERSION",
     "deploy:base": "VERSION=$(cat version.txt) && yarn prepare-all:base && graph deploy --version-label=$VERSION --studio dolomite-liquidator-base",
-    "deploy:base:ormi": "VERSION=$(cat version.txt) && yarn prepare-all:base && graph deploy dolomite-liquidator-base --version-label=$VERSION --node https://dolomiteapi.0xgraph.xyz/deploy --ipfs https://dolomiteapi.0xgraph.xyz/ipfs",
+    "deploy:base:ormi": "VERSION=$(cat version.txt) ORMI_DEPLOY_KEY=$(cat ormi-deploy-key.txt) && yarn prepare-all:base && graph deploy dolomite-liquidator-base --version-label=$VERSION --node https://subgraph.api.dolomite.io/deploy --ipfs https://subgraph.api.dolomite.io/ipfs --deploy-key=$ORMI_DEPLOY_KEY",
     "deploy:base:goldsky": "VERSION=$(cat version.txt) && yarn build:base && goldsky subgraph deploy dolomite-liquidator-base/$VERSION",
     "deploy:berachain": "VERSION=$(cat version.txt) && yarn prepare-all:berachain && graph deploy --version-label=$VERSION --studio dolomite-liquidator-berachain-mainnet",
-    "deploy:berachain:ormi": "VERSION=$(cat version.txt) && yarn prepare-all:berachain && graph deploy dolomite-liquidator-berachain-mainnet --version-label=$VERSION --node https://dolomiteapi.0xgraph.xyz/deploy --ipfs https://dolomiteapi.0xgraph.xyz/ipfs",
     "deploy:berachain:goldsky": "VERSION=$(cat version.txt) && yarn build:berachain && goldsky subgraph deploy dolomite-liquidator-berachain-mainnet/$VERSION",
+    "deploy:berachain:ormi": "VERSION=$(cat version.txt) ORMI_DEPLOY_KEY=$(cat ormi-deploy-key.txt) && yarn prepare-all:berachain && graph deploy dolomite-liquidator-berachain-mainnet --version-label=$VERSION --node https://subgraph.api.dolomite.io/deploy --ipfs https://subgraph.api.dolomite.io/ipfs --deploy-key=$ORMI_DEPLOY_KEY",
     "deploy:mantle": "VERSION=$(cat version.txt) && yarn prepare-all:mantle && graph deploy --version-label=$VERSION dolomite-liquidator-mantle --node https://subgraph-api.mantle.xyz/deploy --ipfs https://subgraph-api.mantle.xyz/ipfs",
-    "deploy:mantle:ormi": "VERSION=$(cat version.txt) && yarn prepare-all:mantle && graph deploy dolomite-liquidator-mantle --version-label=$VERSION --node https://dolomiteapi.0xgraph.xyz/deploy --ipfs https://dolomiteapi.0xgraph.xyz/ipfs",
+    "deploy:mantle:ormi": "VERSION=$(cat version.txt) ORMI_DEPLOY_KEY=$(cat ormi-deploy-key.txt) && yarn prepare-all:mantle && graph deploy dolomite-liquidator-mantle --version-label=$VERSION --node https://subgraph.api.dolomite.io/deploy --ipfs https://subgraph.api.dolomite.io/ipfs --deploy-key=$ORMI_DEPLOY_KEY",
     "deploy:polygon-zkevm": "VERSION=$(cat version.txt) && yarn prepare-all:polygon-zkevm && graph deploy --version-label=$VERSION --studio dolomite-liquidator-polygon-zk",
-    "deploy:polygon-zkevm:ormi": "VERSION=$(cat version.txt) && yarn prepare-all:polygon-zkevm && graph deploy dolomite-liquidator-polygon-zkevm --version-label=$VERSION --node https://dolomiteapi.0xgraph.xyz/deploy --ipfs https://dolomiteapi.0xgraph.xyz/ipfs",
+    "deploy:polygon-zkevm:ormi": "VERSION=$(cat version.txt) ORMI_DEPLOY_KEY=$(cat ormi-deploy-key.txt) && yarn prepare-all:polygon-zkevm && graph deploy dolomite-liquidator-polygon-zkevm --version-label=$VERSION --node https://subgraph.api.dolomite.io/deploy --ipfs https://subgraph.api.dolomite.io/ipfs --deploy-key=$ORMI_DEPLOY_KEY",
     "deploy:x-layer": "VERSION=$(cat version.txt) && yarn prepare-all:x-layer && graph deploy --version-label=$VERSION --studio dolomite-liquidator-x-layer",
-    "deploy:x-layer:ormi": "VERSION=$(cat version.txt) && yarn prepare-all:x-layer && graph deploy dolomite-liquidator-x-layer --version-label=$VERSION --node https://dolomiteapi.0xgraph.xyz/deploy --ipfs https://dolomiteapi.0xgraph.xyz/ipfs"
+    "deploy:x-layer:ormi": "VERSION=$(cat version.txt) ORMI_DEPLOY_KEY=$(cat ormi-deploy-key.txt) && yarn prepare-all:x-layer && graph deploy dolomite-liquidator-x-layer --version-label=$VERSION --node https://subgraph.api.dolomite.io/deploy --ipfs https://subgraph.api.dolomite.io/ipfs --deploy-key=$ORMI_DEPLOY_KEY"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.71.0",

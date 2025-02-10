@@ -7,3 +7,5 @@ yarn-error.log
 subgraph.yaml
 
 src/mappings/generated
+
+ormi-deploy-key.txt
