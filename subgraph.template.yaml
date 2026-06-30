@@ -46,6 +46,8 @@ dataSources:
           handler: handleSetMarginPremium
         - event: LogSetSpreadPremium(uint256,(uint256))
           handler: handleSetLiquidationSpreadPremium
+        - event: LogSetLiquidationSpreadPremium(uint256,(uint256))
+          handler: handleSetLiquidationSpreadPremiumV2
         - event: LogDeposit(indexed address,uint256,uint256,((bool,uint256),(bool,uint128)),address)
           handler: handleDeposit
         - event: LogWithdraw(indexed address,uint256,uint256,((bool,uint256),(bool,uint128)),address)

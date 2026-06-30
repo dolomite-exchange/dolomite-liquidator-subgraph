@@ -14,6 +14,7 @@ import {
   LogSetMarginPremium as MarginPremiumUpdateEvent,
   LogSetMarginRatio as MarginRatioUpdateEvent,
   LogSetMinBorrowedValue as MinBorrowedValueUpdateEvent,
+  LogSetLiquidationSpreadPremium as MarketLiquidationSpreadPremiumUpdateEvent,
   LogSetSpreadPremium as MarketSpreadPremiumUpdateEvent,
   LogTrade as TradeEvent,
   LogTransfer as TransferEvent,
@@ -288,6 +289,19 @@ export function handleSetMarginPremium(event: MarginPremiumUpdateEvent): void {
 export function handleSetLiquidationSpreadPremium(event: MarketSpreadPremiumUpdateEvent): void {
   log.info(
     'Handling liquidation spread premium change for hash and index: {}-{}',
+    [event.transaction.hash.toHexString(), event.logIndex.toString()]
+  )
+
+  let tokenAddress = TokenMarketIdReverseMap.load(event.params.marketId.toString())!.token
+  let marketInfo = MarketRiskInfo.load(tokenAddress) as MarketRiskInfo
+  let spreadPremiumBD = new BigDecimal(event.params.spreadPremium.value)
+  marketInfo.liquidationRewardPremium = spreadPremiumBD.div(BD_ONE_ETH)
+  marketInfo.save()
+}
+
+export function handleSetLiquidationSpreadPremiumV2(event: MarketLiquidationSpreadPremiumUpdateEvent): void {
+  log.info(
+    'Handling liquidation spread V2 premium change for hash and index: {}-{}',
     [event.transaction.hash.toHexString(), event.logIndex.toString()]
   )
 

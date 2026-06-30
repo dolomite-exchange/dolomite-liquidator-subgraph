@@ -3613,6 +3613,32 @@
         ],
         "indexed": false,
         "internalType": "struct Decimal.D256",
+        "name": "liquidationSpreadPremium",
+        "type": "tuple"
+      }
+    ],
+    "name": "LogSetLiquidationSpreadPremium",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "marketId",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct Decimal.D256",
         "name": "marginPremium",
         "type": "tuple"
       }
