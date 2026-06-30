@@ -307,7 +307,7 @@ export function handleSetLiquidationSpreadPremiumV2(event: MarketLiquidationSpre
 
   let tokenAddress = TokenMarketIdReverseMap.load(event.params.marketId.toString())!.token
   let marketInfo = MarketRiskInfo.load(tokenAddress) as MarketRiskInfo
-  let spreadPremiumBD = new BigDecimal(event.params.spreadPremium.value)
+  let spreadPremiumBD = new BigDecimal(event.params.liquidationSpreadPremium.value)
   marketInfo.liquidationRewardPremium = spreadPremiumBD.div(BD_ONE_ETH)
   marketInfo.save()
 }
